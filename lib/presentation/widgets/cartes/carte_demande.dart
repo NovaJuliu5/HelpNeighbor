@@ -11,6 +11,10 @@ class CarteDemande extends ConsumerWidget {
   final EntiteDemande demande;
   const CarteDemande({super.key, required this.demande});
 
+  void _voirProfil(BuildContext context) {
+    context.push('/profil/${demande.utilisateurId}');
+  }
+
   Future<void> _supprimer(BuildContext context, WidgetRef ref) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -50,14 +54,17 @@ class CarteDemande extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
-        leading: CircleAvatar(
-          // Affiche la photo si disponible et non vide
-          backgroundImage: (demande.photoUrl != null && demande.photoUrl!.isNotEmpty)
-              ? NetworkImage(demande.photoUrl!)
-              : null,
-          child: (demande.photoUrl == null || demande.photoUrl!.isEmpty)
-              ? Text(demande.utilisateurNom[0])
-              : null,
+        leading: GestureDetector(
+          onTap: () => _voirProfil(context),
+          behavior: HitTestBehavior.opaque,
+          child: CircleAvatar(
+            backgroundImage: (demande.photoUrl != null && demande.photoUrl!.isNotEmpty)
+                ? NetworkImage(demande.photoUrl!)
+                : null,
+            child: (demande.photoUrl == null || demande.photoUrl!.isEmpty)
+                ? Text(demande.utilisateurNom[0])
+                : null,
+          ),
         ),
         title: Text(demande.titre),
         subtitle: Column(

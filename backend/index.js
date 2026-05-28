@@ -111,14 +111,14 @@ app.get('/api/services/proches', authenticateToken, async (req, res) => {
       s.id,
       s.titre,
       s.description,
-      COALESCE(sp.prix_fixe, 0) as prix,
+      COALESCE(sp.prix_fixe, 0)::float as prix,
       COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
       s.utilisateur_id,
       COALESCE(p.nom, '') as nom,
       COALESCE(p.prenom, '') as prenom,
-      0 as distance_km,
-      COALESCE(AVG(an.note_globale), 0) as note_moyenne,
-      COUNT(DISTINCT a.id) as nb_avis,
+      0::float as distance_km,
+      COALESCE(AVG(an.note_globale), 0)::float as note_moyenne,
+      COUNT(DISTINCT a.id)::int as nb_avis,
       p.photo_url
     FROM services s
     LEFT JOIN categories c ON s.categorie_id = c.id
@@ -149,7 +149,7 @@ app.post('/api/services', authenticateToken, async (req, res) => {
 app.get('/api/services/recherche', authenticateToken, async (req, res) => {
   const { q } = req.query;
   const result = await pool.query(`
-    SELECT s.id, s.titre, s.description, COALESCE(sp.prix_fixe, 0) as prix,
+    SELECT s.id, s.titre, s.description, COALESCE(sp.prix_fixe, 0)::float as prix,
             COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
             s.utilisateur_id,
             COALESCE(p.nom, '') as nom,
@@ -162,6 +162,38 @@ app.get('/api/services/recherche', authenticateToken, async (req, res) => {
      WHERE (s.titre ILIKE $1 OR s.description ILIKE $1) AND s.disponible = true
   `, [`%${q}%`]);
   res.json(result.rows);
+});
+
+// ---------- Récupérer un service par son ID ----------
+app.get('/api/services/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT s.id, s.titre, s.description, COALESCE(sp.prix_fixe, 0)::float as prix,
+             COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+             s.utilisateur_id,
+             COALESCE(p.nom, '') as nom,
+             COALESCE(p.prenom, '') as prenom,
+             0::float as distance_km,
+             COALESCE(AVG(an.note_globale), 0)::float as note_moyenne,
+             COUNT(DISTINCT a.id)::int as nb_avis,
+             p.photo_url
+      FROM services s
+      LEFT JOIN categories c ON s.categorie_id = c.id
+      LEFT JOIN profils p ON s.utilisateur_id = p.utilisateur_id
+      LEFT JOIN services_prix sp ON s.id = sp.service_id
+      LEFT JOIN avis a ON s.id = a.service_id
+      LEFT JOIN avis_notes an ON a.id = an.avis_id
+      WHERE s.id = $1
+      GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url
+    `, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Service non trouvé' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // ---------- Demandes ----------
@@ -297,7 +329,6 @@ app.post('/api/offres', authenticateToken, async (req, res) => {
     return res.status(400).json({ message: 'Cette demande n\'est plus ouverte' });
   }
 
-  // Vérifier si une offre en attente existe déjà
   const existingActiveOffer = await pool.query(`
     SELECT o.id FROM offres o
     JOIN offres_statuts os ON o.id = os.offre_id
@@ -307,7 +338,6 @@ app.post('/api/offres', authenticateToken, async (req, res) => {
     return res.status(400).json({ message: 'Vous avez déjà une offre en attente pour cette demande.' });
   }
 
-  // Créer l'offre
   const result = await pool.query(
     `INSERT INTO offres (demande_id, prestataire_id, message) VALUES ($1, $2, $3) RETURNING id`,
     [demande_id, prestataire_id, message]
@@ -324,7 +354,6 @@ app.post('/api/offres', authenticateToken, async (req, res) => {
     [offreId, 'en_attente']
   );
 
-  // Notification au propriétaire de la demande
   const demandeOwner = await pool.query('SELECT utilisateur_id FROM demandes WHERE id = $1', [demande_id]);
   const prestataireInfo = await pool.query('SELECT prenom, nom, photo_url FROM profils WHERE utilisateur_id = $1', [prestataire_id]);
   const prestataireNom = `${prestataireInfo.rows[0].prenom} ${prestataireInfo.rows[0].nom}`;
@@ -429,6 +458,209 @@ app.put('/api/offres/:id', authenticateToken, async (req, res) => {
 
     await client.query('COMMIT');
     res.json({ message: `Offre ${statut === 'acceptee' ? 'acceptée' : 'refusée'} avec succès` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ---------- Avis & notations ----------
+app.get('/api/avis', authenticateToken, async (req, res) => {
+  const { cible_id, cible_type, service_id } = req.query;
+  try {
+    let query = `
+      SELECT a.id, a.commentaire, a.signalement, a.verifie_par_admin,
+             a.created_at,
+             an.note_globale, an.note_qualite, an.note_ponctualite,
+             an.note_communication, an.note_prix,
+             u.id as auteur_id, COALESCE(p.nom, '') as auteur_nom, COALESCE(p.prenom, '') as auteur_prenom
+      FROM avis a
+      JOIN avis_notes an ON a.id = an.avis_id
+      JOIN utilisateurs u ON a.auteur_id = u.id
+      LEFT JOIN profils p ON u.id = p.utilisateur_id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (cible_id) {
+      params.push(cible_id);
+      query += ` AND a.cible_id = $${params.length}`;
+    }
+    if (cible_type) {
+      params.push(cible_type);
+      query += ` AND a.cible_type = $${params.length}`;
+    }
+    if (service_id) {
+      params.push(service_id);
+      query += ` AND a.service_id = $${params.length}`;
+    }
+    query += ` ORDER BY a.created_at DESC LIMIT 20`;
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/avis', authenticateToken, async (req, res) => {
+  const { cible_id, cible_type, service_id, demande_id, commentaire,
+          note_globale, note_qualite, note_ponctualite, note_communication, note_prix } = req.body;
+  const auteur_id = req.user.id;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const checkQuery = `
+      SELECT id FROM avis
+      WHERE auteur_id = $1 AND cible_id = $2 AND (service_id IS NULL OR service_id = $3)
+    `;
+    const check = await client.query(checkQuery, [auteur_id, cible_id, service_id || null]);
+    if (check.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'Vous avez déjà laissé un avis pour cette cible.' });
+    }
+
+    const avisResult = await client.query(
+      `INSERT INTO avis (auteur_id, cible_id, cible_type, service_id, demande_id, commentaire)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [auteur_id, cible_id, cible_type, service_id || null, demande_id || null, commentaire || null]
+    );
+    const avisId = avisResult.rows[0].id;
+
+    await client.query(
+      `INSERT INTO avis_notes (avis_id, note_globale, note_qualite, note_ponctualite, note_communication, note_prix)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [avisId, note_globale, note_qualite || null, note_ponctualite || null, note_communication || null, note_prix || null]
+    );
+
+    if (cible_type === 'utilisateur') {
+      await client.query(`
+        UPDATE statistiques_utilisateurs
+        SET notation_moyenne = (
+          SELECT AVG(an.note_globale) FROM avis a
+          JOIN avis_notes an ON a.id = an.avis_id
+          WHERE a.cible_id = $1
+        ), nombre_avis = (
+          SELECT COUNT(*) FROM avis WHERE cible_id = $1
+        )
+        WHERE utilisateur_id = $1
+      `, [cible_id]);
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Avis publié avec succès', avis_id: avisId });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Récupérer l'avis de l'utilisateur courant pour une cible
+app.get('/api/avis/current', authenticateToken, async (req, res) => {
+  const { cible_id, service_id } = req.query;
+  const auteur_id = req.user.id;
+  if (!cible_id) return res.status(400).json({ message: 'cible_id requis' });
+  try {
+    let query = `
+      SELECT a.id, a.commentaire, a.cible_id, a.service_id, a.demande_id,
+             an.note_globale, an.note_qualite, an.note_ponctualite,
+             an.note_communication, an.note_prix
+      FROM avis a
+      JOIN avis_notes an ON a.id = an.avis_id
+      WHERE a.auteur_id = $1 AND a.cible_id = $2
+    `;
+    const params = [auteur_id, cible_id];
+    if (service_id) {
+      query += ` AND a.service_id = $3`;
+      params.push(service_id);
+    } else {
+      query += ` AND a.service_id IS NULL`;
+    }
+    const result = await pool.query(query, params);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Aucun avis trouvé' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Récupérer un avis par son ID
+app.get('/api/avis/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.commentaire, a.cible_id, a.service_id, a.demande_id,
+             an.note_globale, an.note_qualite, an.note_ponctualite,
+             an.note_communication, an.note_prix
+      FROM avis a
+      JOIN avis_notes an ON a.id = an.avis_id
+      WHERE a.id = $1
+    `, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Avis non trouvé' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Modifier un avis existant
+app.put('/api/avis/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { commentaire, note_globale, note_qualite, note_ponctualite, note_communication, note_prix } = req.body;
+  const auteur_id = req.user.id;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const check = await client.query('SELECT auteur_id FROM avis WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Avis non trouvé' });
+    }
+    if (check.rows[0].auteur_id !== auteur_id) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ message: 'Action non autorisée' });
+    }
+
+    await client.query('UPDATE avis SET commentaire = $1 WHERE id = $2', [commentaire || null, id]);
+    await client.query(
+      `UPDATE avis_notes SET
+        note_globale = $1,
+        note_qualite = $2,
+        note_ponctualite = $3,
+        note_communication = $4,
+        note_prix = $5
+       WHERE avis_id = $6`,
+      [note_globale, note_qualite || null, note_ponctualite || null, note_communication || null, note_prix || null, id]
+    );
+
+    // Mettre à jour la moyenne de l'utilisateur cible
+    const avisData = await client.query('SELECT cible_id, service_id FROM avis WHERE id = $1', [id]);
+    if (!avisData.rows[0].service_id) {
+      const cibleId = avisData.rows[0].cible_id;
+      await client.query(`
+        UPDATE statistiques_utilisateurs
+        SET notation_moyenne = (
+          SELECT AVG(an.note_globale) FROM avis a
+          JOIN avis_notes an ON a.id = an.avis_id
+          WHERE a.cible_id = $1
+        ), nombre_avis = (
+          SELECT COUNT(*) FROM avis WHERE cible_id = $1
+        )
+        WHERE utilisateur_id = $1
+      `, [cibleId]);
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Avis mis à jour avec succès' });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);

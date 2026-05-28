@@ -9,7 +9,7 @@ class EntiteService {
   final double distanceKm;
   final double noteMoyenne;
   final int nbAvis;
-  final String? photoUrl; // AJOUTÉ
+  final String? photoUrl;
 
   EntiteService({
     required this.id,
@@ -22,7 +22,7 @@ class EntiteService {
     required this.distanceKm,
     required this.noteMoyenne,
     required this.nbAvis,
-    this.photoUrl, // AJOUTÉ
+    this.photoUrl,
   });
 
   factory EntiteService.fromJson(Map<String, dynamic> json) {
@@ -30,14 +30,14 @@ class EntiteService {
       id: json['id'] ?? '',
       titre: json['titre'] ?? '',
       description: json['description'] ?? '',
-      prix: (json['prix'] ?? 0).toDouble(),
+      prix: (json['prix'] is num ? (json['prix'] as num).toDouble() : 0.0),
       categorie: json['categorie_nom'] ?? 'Sans catégorie',
       utilisateurId: json['utilisateur_id'] ?? '',
       utilisateurNom: '${json['prenom'] ?? ''} ${json['nom'] ?? ''}'.trim(),
-      distanceKm: (json['distance_km'] ?? 0).toDouble(),
-      noteMoyenne: (json['note_moyenne'] ?? 0).toDouble(),
-      nbAvis: json['nb_avis'] ?? 0,
-      photoUrl: json['photo_url'], // AJOUTÉ
+      distanceKm: (json['distance_km'] is num ? (json['distance_km'] as num).toDouble() : 0.0),
+      noteMoyenne: (json['note_moyenne'] is num ? (json['note_moyenne'] as num).toDouble() : 0.0),
+      nbAvis: (json['nb_avis'] is int ? json['nb_avis'] : int.tryParse(json['nb_avis']?.toString() ?? '0') ?? 0),
+      photoUrl: json['photo_url'],
     );
   }
 }

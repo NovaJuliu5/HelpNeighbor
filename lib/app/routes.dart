@@ -13,6 +13,7 @@ import 'package:help_neighbor/presentation/ecrans/demande/ecran_modifier_demande
 import 'package:help_neighbor/domaine/entites/entite_demande.dart';
 import 'package:help_neighbor/presentation/ecrans/profil/ecran_modifier_profil.dart';
 import 'package:help_neighbor/presentation/ecrans/discussion/ecran_detail_discussion.dart';
+import 'package:help_neighbor/presentation/ecrans/service/ecran_creer_service.dart';
 
 final router = GoRouter(
   initialLocation: '/connexion',
@@ -45,6 +46,11 @@ final router = GoRouter(
         final demande = state.extra as EntiteDemande;
         return EcranModifierDemande(demande: demande);
       },
+    ),
+    GoRoute(
+      path: '/creer-service',
+      name: 'creer_service',
+      builder: (context, state) => const EcranCreerService(),
     ),
   ],
 );

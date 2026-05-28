@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:help_neighbor/domaine/entites/entite_demande.dart';
 import 'package:help_neighbor/domaine/entites/entite_offre.dart';
 import 'package:help_neighbor/presentation/widgets/communs/barre_navigation_bas_personnalisee.dart';
+import 'package:help_neighbor/presentation/widgets/communs/dialogue_notation.dart'; // AJOUT
 import 'package:help_neighbor/app/dependances.dart';
 import 'package:help_neighbor/donnees/depots/depot_demande.dart';
 import 'package:help_neighbor/donnees/depots/depot_offre.dart';
@@ -88,6 +89,14 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     final authState = ref.watch(authProvider);
     final isOwner = authState.utilisateur?.id == _demande?.utilisateurId;
     final isOpen = _demande?.statut == 'ouverte';
+    // Trouver l'offre acceptée (s'il y en a une)
+    EntiteOffre? offreAcceptee;
+    for (var offre in _offres) {
+      if (offre.statut == 'acceptee') {
+        offreAcceptee = offre;
+        break;
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Détail de la demande')),
@@ -102,7 +111,8 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_demande!.titre, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(_demande!.titre,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(_demande!.description),
               const SizedBox(height: 8),
@@ -117,7 +127,8 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                 ),
               ],
               if (isOwner && _offres.isNotEmpty) ...[
-                const Text('Offres reçues:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Offres reçues:',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ..._offres.map((offre) => Card(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
@@ -129,17 +140,40 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.check, color: Colors.green),
-                          onPressed: () => _repondreOffre(offre.id, 'acceptee'),
+                          onPressed: () =>
+                              _repondreOffre(offre.id, 'acceptee'),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () => _repondreOffre(offre.id, 'refusee'),
+                          onPressed: () =>
+                              _repondreOffre(offre.id, 'refusee'),
                         ),
                       ],
                     )
                         : Chip(label: Text(offre.statut)),
                   ),
                 )),
+              ],
+              // Bouton "Noter le prestataire" (visible si offre acceptée)
+              if (isOwner && offreAcceptee != null) ...[
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => DialogueNotation(
+                        cibleId: offreAcceptee!.prestataireId,   // ← ajout du !
+                        cibleType: 'utilisateur',
+                        demandeId: widget.id,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.star),
+                  label: const Text('Noter ce prestataire'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber[700],
+                  ),
+                ),
               ],
             ],
           ),
@@ -172,7 +206,10 @@ class _FormulaireOffreState extends ConsumerState<_FormulaireOffre> {
         TextField(
           controller: _messageController,
           maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Message...', border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+            hintText: 'Message...',
+            border: OutlineInputBorder(),
+          ),
         ),
         const SizedBox(height: 8),
         _isLoading

@@ -36,4 +36,13 @@ class DepotService {
       return Left(GestionnaireErreurs.traiterErreur(e));
     }
   }
+
+  Future<Either<Echec, EntiteService>> obtenirServiceParId(String id) async {
+    try {
+      final response = await _api.get('/services/$id');
+      return Right(EntiteService.fromJson(response.data));
+    } catch (e) {
+      return Left(GestionnaireErreurs.traiterErreur(e));
+    }
+  }
 }

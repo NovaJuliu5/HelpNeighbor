@@ -7,12 +7,21 @@ import 'package:help_neighbor/domaine/entites/entite_demande.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_localisation.dart';
 
 final servicesProchesProvider = FutureProvider<List<EntiteService>>((ref) async {
+  print("🔍 servicesProchesProvider appelé");
   final position = await ref.watch(localisationProvider.future);
+  print("📍 Position: ${position.latitude}, ${position.longitude}");
   final useCase = ObtenirServicesProchesUseCase(getIt());
   final result = await useCase.executer(position.latitude, position.longitude, 10);
+  print("📦 Résultat: $result");
   return result.fold(
-        (echec) => throw Exception(echec.message),
-        (services) => services,
+        (echec) {
+      print("❌ Erreur: ${echec.message}");
+      throw Exception(echec.message);
+    },
+        (services) {
+      print("✅ ${services.length} services trouvés");
+      return services;
+    },
   );
 });
 

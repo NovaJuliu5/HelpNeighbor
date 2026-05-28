@@ -79,6 +79,12 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
               onPressed: _publier,
               child: const Text('Publier ma demande'),
             ),
+
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => context.push('/creer-service'),
+              child: const Text('Vous voulez proposer un service ?'),
+            ),
           ],
         ),
       ),

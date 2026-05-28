@@ -12,6 +12,10 @@ class CarteService extends ConsumerWidget {
   final EntiteService service;
   const CarteService({super.key, required this.service});
 
+  void _voirProfil(BuildContext context) {
+    context.push('/profil/${service.utilisateurId}');
+  }
+
   void _contacter(BuildContext context, WidgetRef ref) async {
     final authState = ref.read(authProvider);
     final currentUserId = authState.utilisateur?.id;
@@ -35,13 +39,17 @@ class CarteService extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: (service.photoUrl != null && service.photoUrl!.isNotEmpty)
-              ? NetworkImage(service.photoUrl!)
-              : null,
-          child: (service.photoUrl == null || service.photoUrl!.isEmpty)
-              ? Text(service.utilisateurNom.isNotEmpty ? service.utilisateurNom[0] : '?')
-              : null,
+        leading: GestureDetector(
+          onTap: () => _voirProfil(context),
+          behavior: HitTestBehavior.opaque,
+          child: CircleAvatar(
+            backgroundImage: (service.photoUrl != null && service.photoUrl!.isNotEmpty)
+                ? NetworkImage(service.photoUrl!)
+                : null,
+            child: (service.photoUrl == null || service.photoUrl!.isEmpty)
+                ? Text(service.utilisateurNom.isNotEmpty ? service.utilisateurNom[0] : '?')
+                : null,
+          ),
         ),
         title: Row(
           children: [
@@ -71,7 +79,7 @@ class CarteService extends ConsumerWidget {
           onPressed: () => _contacter(context, ref),
           tooltip: 'Contacter',
         ),
-        onTap: () => Navigator.pushNamed(context, '/service/${service.id}'),
+        onTap: () => context.push('/service/${service.id}'),
       ),
     );
   }
