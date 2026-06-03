@@ -13,6 +13,7 @@ class CarteService extends ConsumerWidget {
   const CarteService({super.key, required this.service});
 
   void _voirProfil(BuildContext context) {
+    print("Navigation vers le profil de : ${service.utilisateurId}");
     context.push('/profil/${service.utilisateurId}');
   }
 
@@ -36,28 +37,11 @@ class CarteService extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final adresse = (service.adresse?.isNotEmpty == true) ? service.adresse! : 'Adresse non renseignée';
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
-        leading: GestureDetector(
-          onTap: () => _voirProfil(context),
-          behavior: HitTestBehavior.opaque,
-          child: CircleAvatar(
-            backgroundImage: (service.photoUrl != null && service.photoUrl!.isNotEmpty)
-                ? NetworkImage(service.photoUrl!)
-                : null,
-            child: (service.photoUrl == null || service.photoUrl!.isEmpty)
-                ? Text(service.utilisateurNom.isNotEmpty ? service.utilisateurNom[0] : '?')
-                : null,
-          ),
-        ),
-        title: Row(
-          children: [
-            Expanded(child: Text(service.titre, style: const TextStyle(fontWeight: FontWeight.bold))),
-            const SizedBox(width: 8),
-            Text('${service.distanceKm.toStringAsFixed(0)}m', style: const TextStyle(fontSize: 12)),
-          ],
-        ),
+        // ... leading, title, etc.
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -67,6 +51,15 @@ class CarteService extends ConsumerWidget {
                 EtoilesEvaluation(note: service.noteMoyenne, taille: 14),
                 const SizedBox(width: 4),
                 Text('${service.noteMoyenne.toStringAsFixed(1)} · ${service.nbAvis} avis'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    adresse,
+                    style: const TextStyle(fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
               ],
             ),
             Text(service.categorie, style: const TextStyle(fontSize: 12)),

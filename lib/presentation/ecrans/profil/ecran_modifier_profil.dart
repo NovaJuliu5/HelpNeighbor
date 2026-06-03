@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_utilisateur.dart';
+import 'package:help_neighbor/presentation/fournisseurs/fournisseur_authentification.dart';
 import 'package:help_neighbor/coeur/extensions/extensions_context.dart';
 import 'package:help_neighbor/app/dependances.dart';
 import 'package:help_neighbor/donnees/depots/depot_utilisateur.dart';
@@ -19,15 +20,27 @@ class _EcranModifierProfilState extends ConsumerState<EcranModifierProfil> {
   final _bioController = TextEditingController();
   bool _isLoading = true;
   bool _isSaving = false;
+  String? _userId;
 
   @override
   void initState() {
     super.initState();
-    _chargerProfil();
+    _loadUserId();
   }
 
-  Future<void> _chargerProfil() async {
-    final utilisateur = await ref.read(profilUtilisateurProvider.future);
+  Future<void> _loadUserId() async {
+    final authState = ref.read(authProvider);
+    final userId = authState.utilisateur?.id;
+    if (userId == null) {
+      context.showSnackBar('Utilisateur non connecté', isError: true);
+      return;
+    }
+    _userId = userId;
+    await _chargerProfil(userId);
+  }
+
+  Future<void> _chargerProfil(String userId) async {
+    final utilisateur = await ref.read(profilUtilisateurProvider(userId).future);
     _nomController.text = utilisateur.nom ?? '';
     _prenomController.text = utilisateur.prenom ?? '';
     _bioController.text = utilisateur.bio ?? '';
@@ -73,7 +86,7 @@ class _EcranModifierProfilState extends ConsumerState<EcranModifierProfil> {
           ],
         ),
       ),
-      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 4),
+      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 4), // retiré const
     );
   }
 
@@ -91,7 +104,9 @@ class _EcranModifierProfilState extends ConsumerState<EcranModifierProfil> {
           (echec) => context.showSnackBar(echec.message, isError: true),
           (_) {
         context.showSnackBar('Profil mis à jour !');
-        ref.invalidate(profilUtilisateurProvider);
+        if (_userId != null) {
+          ref.invalidate(profilUtilisateurProvider(_userId!));
+        }
         Navigator.pop(context);
       },
     );

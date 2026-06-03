@@ -12,6 +12,7 @@ class CarteDemande extends ConsumerWidget {
   const CarteDemande({super.key, required this.demande});
 
   void _voirProfil(BuildContext context) {
+    print("Navigation vers le profil de : ${demande.utilisateurId}");
     context.push('/profil/${demande.utilisateurId}');
   }
 
@@ -50,6 +51,7 @@ class CarteDemande extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final isOwner = authState.utilisateur?.id == demande.utilisateurId;
+    final adresse = (demande.adresse?.isNotEmpty == true) ? demande.adresse! : 'Adresse non renseignée';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -72,6 +74,21 @@ class CarteDemande extends ConsumerWidget {
           children: [
             Text(demande.utilisateurNom),
             Text(demande.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Spacer(),
+                Expanded(
+                  child: Text(
+                    adresse,
+                    style: const TextStyle(fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         trailing: Row(

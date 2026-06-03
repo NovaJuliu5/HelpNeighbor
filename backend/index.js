@@ -104,6 +104,7 @@ app.put('/api/utilisateurs/profil', authenticateToken, async (req, res) => {
 });
 
 // ---------- Services ----------
+// MODIFIÉ : remplace distance_km par adresse
 app.get('/api/services/proches', authenticateToken, async (req, res) => {
   const { lat, lon, rayon } = req.query;
   const result = await pool.query(`
@@ -116,7 +117,7 @@ app.get('/api/services/proches', authenticateToken, async (req, res) => {
       s.utilisateur_id,
       COALESCE(p.nom, '') as nom,
       COALESCE(p.prenom, '') as prenom,
-      0::float as distance_km,
+      COALESCE(sl.adresse_service, a.adresse, a.ville) as adresse,
       COALESCE(AVG(an.note_globale), 0)::float as note_moyenne,
       COUNT(DISTINCT a.id)::int as nb_avis,
       p.photo_url
@@ -124,10 +125,12 @@ app.get('/api/services/proches', authenticateToken, async (req, res) => {
     LEFT JOIN categories c ON s.categorie_id = c.id
     LEFT JOIN profils p ON s.utilisateur_id = p.utilisateur_id
     LEFT JOIN services_prix sp ON s.id = sp.service_id
-    LEFT JOIN avis a ON s.id = a.service_id
-    LEFT JOIN avis_notes an ON a.id = an.avis_id
+    LEFT JOIN services_localisation sl ON s.id = sl.service_id
+    LEFT JOIN adresses a ON s.utilisateur_id = a.utilisateur_id AND a.est_principale = true
+    LEFT JOIN avis av ON s.id = av.service_id
+    LEFT JOIN avis_notes an ON av.id = an.avis_id
     WHERE s.disponible = true
-    GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url
+    GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url, sl.adresse_service, a.adresse, a.ville
     LIMIT 20
   `);
   res.json(result.rows);
@@ -154,17 +157,19 @@ app.get('/api/services/recherche', authenticateToken, async (req, res) => {
             s.utilisateur_id,
             COALESCE(p.nom, '') as nom,
             COALESCE(p.prenom, '') as prenom,
-            p.photo_url
+            p.photo_url,
+            COALESCE(sl.adresse_service, a.adresse, a.ville) as adresse
      FROM services s
      LEFT JOIN categories c ON s.categorie_id = c.id
      LEFT JOIN services_prix sp ON s.id = sp.service_id
      LEFT JOIN profils p ON s.utilisateur_id = p.utilisateur_id
+     LEFT JOIN services_localisation sl ON s.id = sl.service_id
+     LEFT JOIN adresses a ON s.utilisateur_id = a.utilisateur_id AND a.est_principale = true
      WHERE (s.titre ILIKE $1 OR s.description ILIKE $1) AND s.disponible = true
   `, [`%${q}%`]);
   res.json(result.rows);
 });
 
-// ---------- Récupérer un service par son ID ----------
 app.get('/api/services/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
@@ -174,7 +179,7 @@ app.get('/api/services/:id', authenticateToken, async (req, res) => {
              s.utilisateur_id,
              COALESCE(p.nom, '') as nom,
              COALESCE(p.prenom, '') as prenom,
-             0::float as distance_km,
+             COALESCE(sl.adresse_service, a.adresse, a.ville) as adresse,
              COALESCE(AVG(an.note_globale), 0)::float as note_moyenne,
              COUNT(DISTINCT a.id)::int as nb_avis,
              p.photo_url
@@ -182,10 +187,12 @@ app.get('/api/services/:id', authenticateToken, async (req, res) => {
       LEFT JOIN categories c ON s.categorie_id = c.id
       LEFT JOIN profils p ON s.utilisateur_id = p.utilisateur_id
       LEFT JOIN services_prix sp ON s.id = sp.service_id
-      LEFT JOIN avis a ON s.id = a.service_id
-      LEFT JOIN avis_notes an ON a.id = an.avis_id
+      LEFT JOIN services_localisation sl ON s.id = sl.service_id
+      LEFT JOIN adresses a ON s.utilisateur_id = a.utilisateur_id AND a.est_principale = true
+      LEFT JOIN avis av ON s.id = av.service_id
+      LEFT JOIN avis_notes an ON av.id = an.avis_id
       WHERE s.id = $1
-      GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url
+      GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url, sl.adresse_service, a.adresse, a.ville
     `, [id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Service non trouvé' });
@@ -197,16 +204,20 @@ app.get('/api/services/:id', authenticateToken, async (req, res) => {
 });
 
 // ---------- Demandes ----------
+// MODIFIÉ : remplace distance par adresse
 app.get('/api/demandes/proches', authenticateToken, async (req, res) => {
   const result = await pool.query(`
     SELECT d.id, d.titre, d.description, ds.statut, d.created_at,
            d.utilisateur_id,
            COALESCE(p.nom, '') as nom,
            COALESCE(p.prenom, '') as prenom,
-           p.photo_url
+           p.photo_url,
+           COALESCE(dl.adresse_demande, a.adresse, a.ville) as adresse
     FROM demandes d
     LEFT JOIN demandes_statuts ds ON d.id = ds.demande_id
     LEFT JOIN profils p ON d.utilisateur_id = p.utilisateur_id
+    LEFT JOIN demandes_localisation dl ON d.id = dl.demande_id
+    LEFT JOIN adresses a ON d.utilisateur_id = a.utilisateur_id AND a.est_principale = true
     WHERE ds.statut = 'ouverte'
     ORDER BY d.created_at DESC
     LIMIT 20
@@ -235,10 +246,13 @@ app.post('/api/demandes', authenticateToken, async (req, res) => {
   const newDemande = await pool.query(`
     SELECT d.id, d.titre, d.description, ds.statut, d.created_at,
            COALESCE(p.nom, '') as nom, COALESCE(p.prenom, '') as prenom,
-           p.photo_url
+           p.photo_url,
+           COALESCE(dl.adresse_demande, a.adresse, a.ville) as adresse
     FROM demandes d
     LEFT JOIN demandes_statuts ds ON d.id = ds.demande_id
     LEFT JOIN profils p ON d.utilisateur_id = p.utilisateur_id
+    LEFT JOIN demandes_localisation dl ON d.id = dl.demande_id
+    LEFT JOIN adresses a ON d.utilisateur_id = a.utilisateur_id AND a.est_principale = true
     WHERE d.id = $1
   `, [newId]);
 
@@ -253,10 +267,13 @@ app.get('/api/demandes/:id', authenticateToken, async (req, res) => {
              d.utilisateur_id,
              COALESCE(p.nom, '') as nom,
              COALESCE(p.prenom, '') as prenom,
-             p.photo_url
+             p.photo_url,
+             COALESCE(dl.adresse_demande, a.adresse, a.ville) as adresse
       FROM demandes d
       LEFT JOIN demandes_statuts ds ON d.id = ds.demande_id
       LEFT JOIN profils p ON d.utilisateur_id = p.utilisateur_id
+      LEFT JOIN demandes_localisation dl ON d.id = dl.demande_id
+      LEFT JOIN adresses a ON d.utilisateur_id = a.utilisateur_id AND a.est_principale = true
       WHERE d.id = $1
     `, [id]);
     if (result.rows.length === 0) {
@@ -281,11 +298,15 @@ app.put('/api/demandes/:id', authenticateToken, async (req, res) => {
     await pool.query('UPDATE demandes SET titre = $1, description = $2 WHERE id = $3', [titre, description, id]);
     const updated = await pool.query(`
       SELECT d.id, d.titre, d.description, ds.statut, d.created_at,
-             COALESCE(p.nom, '') as nom, COALESCE(p.prenom, '') as prenom,
-             p.photo_url
+             COALESCE(p.nom, '') as nom,
+             COALESCE(p.prenom, '') as prenom,
+             p.photo_url,
+             COALESCE(dl.adresse_demande, a.adresse, a.ville) as adresse
       FROM demandes d
       LEFT JOIN demandes_statuts ds ON d.id = ds.demande_id
       LEFT JOIN profils p ON d.utilisateur_id = p.utilisateur_id
+      LEFT JOIN demandes_localisation dl ON d.id = dl.demande_id
+      LEFT JOIN adresses a ON d.utilisateur_id = a.utilisateur_id AND a.est_principale = true
       WHERE d.id = $1
     `, [id]);
     res.json(updated.rows[0]);
@@ -561,7 +582,6 @@ app.post('/api/avis', authenticateToken, async (req, res) => {
   }
 });
 
-// Récupérer l'avis de l'utilisateur courant pour une cible
 app.get('/api/avis/current', authenticateToken, async (req, res) => {
   const { cible_id, service_id } = req.query;
   const auteur_id = req.user.id;
@@ -592,7 +612,6 @@ app.get('/api/avis/current', authenticateToken, async (req, res) => {
   }
 });
 
-// Récupérer un avis par son ID
 app.get('/api/avis/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
@@ -611,7 +630,6 @@ app.get('/api/avis/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Modifier un avis existant
 app.put('/api/avis/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { commentaire, note_globale, note_qualite, note_ponctualite, note_communication, note_prix } = req.body;
@@ -642,7 +660,6 @@ app.put('/api/avis/:id', authenticateToken, async (req, res) => {
       [note_globale, note_qualite || null, note_ponctualite || null, note_communication || null, note_prix || null, id]
     );
 
-    // Mettre à jour la moyenne de l'utilisateur cible
     const avisData = await client.query('SELECT cible_id, service_id FROM avis WHERE id = $1', [id]);
     if (!avisData.rows[0].service_id) {
       const cibleId = avisData.rows[0].cible_id;
@@ -676,20 +693,20 @@ app.get('/api/conversations', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT c.id, c.demande_id, c.service_id, c.created_at, c.updated_at,
-             u2.id as autre_id, COALESCE(p.nom, '') as autre_nom, COALESCE(p.prenom, '') as autre_prenom,
              (SELECT contenu FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as dernier_message,
-             (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as derniere_activite
+             (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as derniere_activite,
+             (SELECT u2.id FROM participants_conversation pc2 JOIN utilisateurs u2 ON pc2.utilisateur_id = u2.id WHERE pc2.conversation_id = c.id AND pc2.utilisateur_id != $1 LIMIT 1) as autre_id,
+             (SELECT COALESCE(p.nom, '') FROM participants_conversation pc2 JOIN profils p ON pc2.utilisateur_id = p.utilisateur_id WHERE pc2.conversation_id = c.id AND pc2.utilisateur_id != $1 LIMIT 1) as autre_nom,
+             (SELECT COALESCE(p.prenom, '') FROM participants_conversation pc2 JOIN profils p ON pc2.utilisateur_id = p.utilisateur_id WHERE pc2.conversation_id = c.id AND pc2.utilisateur_id != $1 LIMIT 1) as autre_prenom
       FROM conversations c
-      JOIN participants_conversation pc ON c.id = pc.conversation_id
-      JOIN utilisateurs u2 ON pc.utilisateur_id = u2.id
-      LEFT JOIN profils p ON u2.id = p.utilisateur_id
       WHERE c.id IN (
         SELECT conversation_id FROM participants_conversation WHERE utilisateur_id = $1
-      ) AND pc.utilisateur_id != $1
+      )
       ORDER BY derniere_activite DESC NULLS LAST
     `, [userId]);
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -697,25 +714,19 @@ app.get('/api/conversations', authenticateToken, async (req, res) => {
 app.post('/api/conversations', authenticateToken, async (req, res) => {
   const { autre_id, demande_id, service_id } = req.body;
   const userId = req.user.id;
+
   try {
-    let query = `
+    const existing = await pool.query(`
       SELECT c.id FROM conversations c
       JOIN participants_conversation pc1 ON c.id = pc1.conversation_id
       JOIN participants_conversation pc2 ON c.id = pc2.conversation_id
       WHERE pc1.utilisateur_id = $1 AND pc2.utilisateur_id = $2
-    `;
-    const params = [userId, autre_id];
-    if (demande_id) {
-      query += ` AND c.demande_id = $3`;
-      params.push(demande_id);
-    } else if (service_id) {
-      query += ` AND c.service_id = $3`;
-      params.push(service_id);
-    }
-    const existing = await pool.query(query, params);
+    `, [userId, autre_id]);
+
     if (existing.rows.length > 0) {
       return res.json({ id: existing.rows[0].id });
     }
+
     await pool.query('BEGIN');
     const convResult = await pool.query(
       `INSERT INTO conversations (demande_id, service_id) VALUES ($1, $2) RETURNING id`,

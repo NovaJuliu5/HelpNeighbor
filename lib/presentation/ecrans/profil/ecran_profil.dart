@@ -15,7 +15,8 @@ class EcranProfil extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final isOwnProfile = authState.utilisateur?.id == userId;
-    final profilAsync = ref.watch(profilUtilisateurProvider);
+    // Utilisation du family provider avec l'ID passé en paramètre
+    final profilAsync = ref.watch(profilUtilisateurProvider(userId));
 
     return Scaffold(
       appBar: AppBar(
@@ -88,7 +89,7 @@ class EcranProfil extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Erreur: $err')),
       ),
-      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 4), // Retiré const
+      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 4),
     );
   }
 
@@ -108,7 +109,7 @@ class EcranProfil extends ConsumerWidget {
       final depot = getIt<DepotAuthentification>();
       await depot.deconnexion();
       ref.invalidate(authProvider);
-      ref.invalidate(profilUtilisateurProvider);
+      ref.invalidate(profilUtilisateurProvider(userId));
       context.go('/connexion');
     }
   }

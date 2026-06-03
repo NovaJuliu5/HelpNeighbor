@@ -6,7 +6,8 @@ class EntiteDemande {
   final DateTime createdAt;
   final String utilisateurNom;
   final String utilisateurId;
-  final String? photoUrl; // AJOUTÉ
+  final String? photoUrl;
+  final String? adresse;        // NOUVEAU
 
   EntiteDemande({
     required this.id,
@@ -16,7 +17,8 @@ class EntiteDemande {
     required this.createdAt,
     required this.utilisateurNom,
     required this.utilisateurId,
-    this.photoUrl, // AJOUTÉ
+    this.photoUrl,
+    this.adresse,               // NOUVEAU
   });
 
   factory EntiteDemande.fromJson(Map<String, dynamic> json) {
@@ -31,7 +33,8 @@ class EntiteDemande {
       utilisateurNom: json['utilisateur_nom'] ??
           '${json['prenom'] ?? ''} ${json['nom'] ?? ''}'.trim(),
       utilisateurId: json['utilisateur_id'] ?? '',
-      photoUrl: json['photo_url'], // AJOUTÉ
+      photoUrl: json['photo_url'],
+      adresse: json['adresse'],   // NOUVEAU
     );
   }
 }

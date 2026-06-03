@@ -21,8 +21,6 @@ dependencies:
   shared_preferences: ^2.2.2
   flutter_secure_storage: ^9.0.0
   geolocator: ^10.1.0
-  # file_picker: (supprimé) – non utilisé
-  # image_picker: (optionnel, gardé si besoin)
   cached_network_image: ^3.3.0
   equatable: ^2.0.5
   dartz: ^0.10.1
@@ -34,12 +32,17 @@ dev_dependencies:
   flutter_lints: ^3.0.1
   build_runner: ^2.4.6
   json_serializable: ^6.7.1
+  flutter_launcher_icons: ^0.13.1   # <-- AJOUT
 
 flutter:
   uses-material-design: true
   assets:
-    # Commentez temporairement les dossiers manquants
-    # - actifs/images/
-    # - actifs/polices/
-    # - actifs/animations/
     - actifs/traductions/
+
+# Configuration pour le logo
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/logo.png"
