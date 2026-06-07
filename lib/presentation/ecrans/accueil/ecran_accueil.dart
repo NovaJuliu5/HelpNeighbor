@@ -1,187 +1,285 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:help_neighbor/domaine/entites/entite_service.dart';
-import 'package:help_neighbor/domaine/entites/entite_demande.dart';
-import 'package:help_neighbor/presentation/ecrans/accueil/fournisseur_accueil.dart';
-import 'package:help_neighbor/presentation/widgets/cartes/carte_service.dart';
-import 'package:help_neighbor/presentation/widgets/cartes/carte_demande.dart';
-import 'package:help_neighbor/presentation/widgets/communs/indicateur_chargement.dart';
-import 'package:help_neighbor/presentation/widgets/communs/widget_erreur.dart';
-import 'package:help_neighbor/presentation/widgets/communs/barre_navigation_bas_personnalisee.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_authentification.dart';
+import 'package:help_neighbor/presentation/fournisseurs/fournisseur_utilisateur.dart';
+import 'package:help_neighbor/presentation/widgets/communs/barre_navigation_bas_personnalisee.dart';
 
-class EcranAccueil extends ConsumerStatefulWidget {
+class EcranAccueil extends ConsumerWidget {
   const EcranAccueil({super.key});
 
   @override
-  ConsumerState<EcranAccueil> createState() => _EcranAccueilState();
-}
-
-class _EcranAccueilState extends ConsumerState<EcranAccueil> {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String _selectedCategory = 'Toutes';
-
-  final List<String> _categories = [
-    'Toutes',
-    'Bricolage',
-    'Jardinage',
-    'Transport',
-    'Informatique',
-    'Cours',
-    'Garde / Soin',
-  ];
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final servicesAsync = ref.watch(servicesProchesProvider);
-    final demandesAsync = ref.watch(demandesProchesProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final userId = authState.utilisateur?.id;
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('HelpNeighbor'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: const Text(
+          'Help Neighbor',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+        ),
+        centerTitle: false,
         actions: [
-          if (userId != null)
-            IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: () => context.push('/profil/$userId'),
-            ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none, color: Color(0xFF2E7D32)),
+            onPressed: () => context.push('/notifications'),
+          ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(servicesProchesProvider);
-          ref.invalidate(demandesProchesProvider);
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: userId == null
+          ? _buildNonConnecte(context)
+          : _buildConnecte(context, ref, userId),
+      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 0),
+    );
+  }
+
+  Widget _buildNonConnecte(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.handshake, size: 80, color: Color(0xFF2E7D32)),
+            const SizedBox(height: 20),
+            const Text(
+              'Bienvenue !',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Rejoignez la communauté d’entraide de votre quartier.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => context.push('/connexion'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              ),
+              child: const Text('Se connecter'),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => context.push('/inscription'),
+              child: const Text('Créer un compte', style: TextStyle(color: Color(0xFF2E7D32))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnecte(BuildContext context, WidgetRef ref, String userId) {
+    final profilAsync = ref.watch(profilUtilisateurProvider(userId));
+    final prenom = profilAsync.when(
+      data: (user) => user.prenom ?? 'Voisin',
+      error: (_, __) => 'Voisin',
+      loading: () => '...',
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Carte de bienvenue (originale)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.green.shade200, blurRadius: 10, offset: const Offset(0, 5)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Salut $prenom 👋',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Un petit geste aujourd’hui peut changer le quotidien de quelqu’un.',
+                  style: TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Deux actions principales (grandes cartes)
+          Row(
             children: [
-              // En-tête avec localisation (optionnel)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 18),
-                    const SizedBox(width: 4),
-                    const Text('Antsahavola'),
-                    const Spacer(),
-                    Text('Bonjour, ${authState.utilisateur?.prenom ?? 'Visiteur'} 🐝'),
-                  ],
-                ),
+              _ActionTile(
+                icon: Icons.help_outline,
+                label: 'J’ai besoin\nd’aide',
+                color: Colors.orange,
+                onTap: () => context.push('/creer-demande'),
               ),
-              // Barre de recherche
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher un service...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              const SizedBox(width: 16),
+              _ActionTile(
+                icon: Icons.favorite_outline,
+                label: 'Je veux aider\nmes voisins',
+                color: const Color(0xFF2E7D32),
+                onTap: () => context.push('/creer-service'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Section "Idées du moment" (catégories originales)
+          const Text(
+            '💡 Idées du moment',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: const [
+              _IdeaChip(label: 'Réparation', icon: Icons.build),
+              _IdeaChip(label: 'Jardinage', icon: Icons.grass),
+              _IdeaChip(label: 'Cours en ligne', icon: Icons.computer),
+              _IdeaChip(label: 'Aide ménagère', icon: Icons.cleaning_services),
+              _IdeaChip(label: 'Garde d’enfants', icon: Icons.child_care),
+              _IdeaChip(label: 'Transport', icon: Icons.directions_car),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Petit rappel statistique (simple, sans tableau)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _MiniStat(
+                  count: profilAsync.when(
+                    data: (user) => user.nbServices ?? 0,
+                    error: (_, __) => 0,
+                    loading: () => 0,
                   ),
-                  onChanged: (value) => setState(() => _searchQuery = value),
+                  label: 'services',
                 ),
-              ),
+                Container(height: 30, width: 1, color: Colors.grey.shade300),
+                _MiniStat(
+                  count: profilAsync.when(
+                    data: (user) => user.nbDemandes ?? 0,
+                    error: (_, __) => 0,
+                    loading: () => 0,
+                  ),
+                  label: 'demandes',
+                ),
+                Container(height: 30, width: 1, color: Colors.grey.shade300),
+                _MiniStat(
+                  count: 0, // à remplacer par vrai compteur de conversations
+                  label: 'messages',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+}
+
+// Carte d'action (grande)
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _ActionTile({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 42, color: color),
               const SizedBox(height: 12),
-              // Chips de catégories
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final cat = _categories[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(cat),
-                        selected: _selectedCategory == cat,
-                        onSelected: (_) => setState(() => _selectedCategory = cat),
-                      ),
-                    );
-                  },
-                ),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 14),
               ),
-              const SizedBox(height: 16),
-              // Services à proximité
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Voisins disponibles',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 8),
-              servicesAsync.when(
-                data: (services) {
-                  final filtered = _filterServices(services);
-                  return Column(
-                    children: filtered.map((s) => CarteService(service: s)).toList(),
-                  );
-                },
-                loading: () => const IndicateurChargement(),
-                error: (err, _) => WidgetErreur(message: err.toString()),
-              ),
-              const SizedBox(height: 16),
-              // Demandes récentes
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Demandes récentes',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 8),
-              demandesAsync.when(
-                data: (demandes) {
-                  final filtered = _filterDemandes(demandes);
-                  return Column(
-                    children: filtered.map((d) => CarteDemande(demande: d)).toList(),
-                  );
-                },
-                loading: () => const IndicateurChargement(),
-                error: (err, _) => WidgetErreur(message: err.toString()),
-              ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 0),
     );
   }
+}
 
-  List<EntiteService> _filterServices(List<EntiteService> services) {
-    return services.where((s) {
-      final matchesQuery = _searchQuery.isEmpty ||
-          s.titre.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          s.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesCategory = _selectedCategory == 'Toutes' ||
-          s.categorie == _selectedCategory;
-      return matchesQuery && matchesCategory;
-    }).toList();
+// Puce "Idée du moment"
+class _IdeaChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  const _IdeaChip({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      avatar: Icon(icon, size: 16),
+      onPressed: () => context.push('/explorer', extra: {'categorie': label}),
+      side: BorderSide.none,
+      backgroundColor: Colors.grey.shade100,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+    );
   }
+}
 
-  List<EntiteDemande> _filterDemandes(List<EntiteDemande> demandes) {
-    return demandes.where((d) {
-      return _searchQuery.isEmpty ||
-          d.titre.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          d.description.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+// Mini statistique
+class _MiniStat extends StatelessWidget {
+  final int count;
+  final String label;
+  const _MiniStat({required this.count, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          count.toString(),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
+    );
   }
 }

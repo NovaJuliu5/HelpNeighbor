@@ -37,8 +37,10 @@ final router = GoRouter(
         return EcranDetailDiscussion(conversationId: id, autreNom: autreNom);
       },
     ),
-    GoRoute(path: '/profil/:id', name: 'profil', builder: (context, state) => EcranProfil(userId: state.pathParameters['id']!)),
+    // ✅ Route statique (plus spécifique) d'abord
     GoRoute(path: '/profil/modifier', name: 'modifier_profil', builder: (context, state) => const EcranModifierProfil()),
+    // ✅ Route dynamique ensuite
+    GoRoute(path: '/profil/:id', name: 'profil', builder: (context, state) => EcranProfil(userId: state.pathParameters['id']!)),
     GoRoute(
       path: '/modifier-demande',
       name: 'modifier_demande',

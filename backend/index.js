@@ -19,6 +19,18 @@ const pool = new Pool({
 
 const JWT_SECRET = 'votre_secret_jwt';
 
+// ---------- Middleware de validation UUID ----------
+function validateUuidParam(paramName) {
+  return (req, res, next) => {
+    const value = req.params[paramName];
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(value)) {
+      return res.status(400).json({ message: `ID invalide : '${value}' (attendu un UUID)` });
+    }
+    next();
+  };
+}
+
 // ---------- Authentification ----------
 app.post('/api/auth/connexion', async (req, res) => {
   const { email, password } = req.body;
@@ -65,16 +77,18 @@ app.post('/api/auth/inscription', async (req, res) => {
 });
 
 // ---------- Profil ----------
-app.get('/api/utilisateurs/:id', authenticateToken, async (req, res) => {
+app.get('/api/utilisateurs/:id', authenticateToken, validateUuidParam('id'), async (req, res) => {
   const { id } = req.params;
   const result = await pool.query(`
     SELECT u.id, u.email, u.telephone,
            p.nom, p.prenom, p.photo_url, p.bio,
+           a.adresse, a.ville, a.code_postal, a.pays,
            (SELECT COUNT(*) FROM services WHERE utilisateur_id = u.id AND deleted_at IS NULL) as nb_services,
            (SELECT COUNT(*) FROM demandes WHERE utilisateur_id = u.id) as nb_demandes,
            COALESCE((SELECT AVG(an.note_globale) FROM avis a JOIN avis_notes an ON a.id = an.avis_id WHERE a.cible_id = u.id), 0) as note_moyenne
     FROM utilisateurs u
     LEFT JOIN profils p ON u.id = p.utilisateur_id
+    LEFT JOIN adresses a ON u.id = a.utilisateur_id AND a.est_principale = true
     WHERE u.id = $1
   `, [id]);
   const row = result.rows[0];
@@ -87,6 +101,10 @@ app.get('/api/utilisateurs/:id', authenticateToken, async (req, res) => {
     prenom: row.prenom ?? '',
     photo_url: row.photo_url ?? '',
     bio: row.bio ?? '',
+    adresse: row.adresse,
+    ville: row.ville,
+    code_postal: row.code_postal,
+    pays: row.pays,
     nb_services: parseInt(row.nb_services) || 0,
     nb_demandes: parseInt(row.nb_demandes) || 0,
     note_moyenne: parseFloat(row.note_moyenne) || 0
@@ -95,16 +113,44 @@ app.get('/api/utilisateurs/:id', authenticateToken, async (req, res) => {
 
 app.put('/api/utilisateurs/profil', authenticateToken, async (req, res) => {
   const userId = req.user.id;
-  const { nom, prenom, photo_url, bio } = req.body;
+  const { nom, prenom, photo_url, bio, adresse, ville, code_postal, pays } = req.body;
+
   await pool.query(
-    'UPDATE profils SET nom = COALESCE($1, nom), prenom = COALESCE($2, prenom), photo_url = COALESCE($3, photo_url), bio = COALESCE($4, bio) WHERE utilisateur_id = $5',
+    `UPDATE profils
+     SET nom = COALESCE($1, nom),
+         prenom = COALESCE($2, prenom),
+         photo_url = COALESCE($3, photo_url),
+         bio = COALESCE($4, bio)
+     WHERE utilisateur_id = $5`,
     [nom, prenom, photo_url, bio, userId]
   );
+
+  if (adresse) {
+    const existing = await pool.query(
+      `SELECT id FROM adresses
+       WHERE utilisateur_id = $1 AND est_principale = true`,
+      [userId]
+    );
+    if (existing.rows.length > 0) {
+      await pool.query(
+        `UPDATE adresses
+         SET adresse = $1, ville = $2, code_postal = $3, pays = $4
+         WHERE utilisateur_id = $5 AND est_principale = true`,
+        [adresse, ville || null, code_postal || null, pays || 'Madagascar', userId]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO adresses (utilisateur_id, adresse, ville, code_postal, pays, est_principale)
+         VALUES ($1, $2, $3, $4, $5, true)`,
+        [userId, adresse, ville || null, code_postal || null, pays || 'Madagascar']
+      );
+    }
+  }
+
   res.json({ message: 'Profil mis à jour' });
 });
 
 // ---------- Services ----------
-// MODIFIÉ : remplace distance_km par adresse
 app.get('/api/services/proches', authenticateToken, async (req, res) => {
   const { lat, lon, rayon } = req.query;
   const result = await pool.query(`
@@ -133,6 +179,9 @@ app.get('/api/services/proches', authenticateToken, async (req, res) => {
     GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url, sl.adresse_service, a.adresse, a.ville
     LIMIT 20
   `);
+  console.log("🔍 [GET /services/proches] Services retournés :",
+    result.rows.map(r => ({ id: r.id, titre: r.titre, adresse: r.adresse }))
+  );
   res.json(result.rows);
 });
 
@@ -167,6 +216,9 @@ app.get('/api/services/recherche', authenticateToken, async (req, res) => {
      LEFT JOIN adresses a ON s.utilisateur_id = a.utilisateur_id AND a.est_principale = true
      WHERE (s.titre ILIKE $1 OR s.description ILIKE $1) AND s.disponible = true
   `, [`%${q}%`]);
+  console.log("🔍 [GET /services/recherche] Services trouvés :",
+    result.rows.map(r => ({ id: r.id, titre: r.titre, adresse: r.adresse }))
+  );
   res.json(result.rows);
 });
 
@@ -204,7 +256,6 @@ app.get('/api/services/:id', authenticateToken, async (req, res) => {
 });
 
 // ---------- Demandes ----------
-// MODIFIÉ : remplace distance par adresse
 app.get('/api/demandes/proches', authenticateToken, async (req, res) => {
   const result = await pool.query(`
     SELECT d.id, d.titre, d.description, ds.statut, d.created_at,

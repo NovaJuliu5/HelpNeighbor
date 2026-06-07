@@ -25,6 +25,7 @@ dependencies:
   equatable: ^2.0.5
   dartz: ^0.10.1
   get_it: ^7.6.4
+  uuid: ^4.0.0   # <-- AJOUTÉ
 
 dev_dependencies:
   flutter_test:
@@ -32,7 +33,7 @@ dev_dependencies:
   flutter_lints: ^3.0.1
   build_runner: ^2.4.6
   json_serializable: ^6.7.1
-  flutter_launcher_icons: ^0.13.1   # <-- AJOUT
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true

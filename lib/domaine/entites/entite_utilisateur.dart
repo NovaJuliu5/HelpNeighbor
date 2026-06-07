@@ -9,6 +9,10 @@ class EntiteUtilisateur {
   final String? bio;
   final int? nbServices;
   final int? nbDemandes;
+  final String? adresse;
+  final String? ville;
+  final String? codePostal;
+  final String? pays;
 
   EntiteUtilisateur({
     required this.id,
@@ -21,6 +25,10 @@ class EntiteUtilisateur {
     this.bio,
     this.nbServices,
     this.nbDemandes,
+    this.adresse,
+    this.ville,
+    this.codePostal,
+    this.pays,
   });
 
   factory EntiteUtilisateur.fromJson(Map<String, dynamic> json) {
@@ -35,6 +43,10 @@ class EntiteUtilisateur {
       bio: json['bio'],
       nbServices: json['nb_services'],
       nbDemandes: json['nb_demandes'],
+      adresse: json['adresse'],
+      ville: json['ville'],
+      codePostal: json['code_postal'],
+      pays: json['pays'],
     );
   }
 }
