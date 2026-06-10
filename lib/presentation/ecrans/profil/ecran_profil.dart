@@ -15,6 +15,7 @@ class EcranProfil extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final isOwnProfile = authState.utilisateur?.id == userId;
+    final isAdmin = authState.utilisateur?.role == 'admin';
     // Utilisation du family provider avec l'ID passé en paramètre
     final profilAsync = ref.watch(profilUtilisateurProvider(userId));
 
@@ -83,6 +84,22 @@ class EcranProfil extends ConsumerWidget {
                   _StatCard('Note', utilisateur.noteMoyenne.toStringAsFixed(1)),
                 ],
               ),
+              // 🔐 Section Administration (visible uniquement pour son propre profil admin)
+              if (isOwnProfile && isAdmin) ...[
+                const SizedBox(height: 24),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: Colors.blue.shade50,
+                  child: ListTile(
+                    leading: const Icon(Icons.admin_panel_settings, color: Colors.blue),
+                    title: const Text('Gestion des utilisateurs', style: TextStyle(fontWeight: FontWeight.w500)),
+                    subtitle: const Text('Accéder à l’espace d’administration'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => context.push('/admin/utilisateurs'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

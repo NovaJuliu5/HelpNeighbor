@@ -33,7 +33,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(erreur: echec);
       },
           (utilisateur) {
-        print('✅ [AUTH] Utilisateur reçu après connexion : id=${utilisateur.id}');
+        print('✅ [AUTH] Utilisateur reçu après connexion : id=${utilisateur.id}, role=${utilisateur.role}');
         if (!_isValidUuid(utilisateur.id)) {
           print('⚠️ [AUTH] ID invalide détecté : ${utilisateur.id} (n’est pas un UUID)');
         } else {
@@ -54,7 +54,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState(erreur: echec);
       },
           (utilisateur) {
-        print('✅ [AUTH] Utilisateur inscrit et connecté : id=${utilisateur.id}');
+        print('✅ [AUTH] Utilisateur inscrit et connecté : id=${utilisateur.id}, role=${utilisateur.role}');
         if (!_isValidUuid(utilisateur.id)) {
           print('⚠️ [AUTH] ID invalide détecté : ${utilisateur.id} (n’est pas un UUID)');
         } else {

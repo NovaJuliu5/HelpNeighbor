@@ -13,6 +13,7 @@ class EntiteUtilisateur {
   final String? ville;
   final String? codePostal;
   final String? pays;
+  final String? role; // Ajout
 
   EntiteUtilisateur({
     required this.id,
@@ -29,6 +30,7 @@ class EntiteUtilisateur {
     this.ville,
     this.codePostal,
     this.pays,
+    this.role,
   });
 
   factory EntiteUtilisateur.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class EntiteUtilisateur {
       ville: json['ville'],
       codePostal: json['code_postal'],
       pays: json['pays'],
+      role: json['role'],
     );
   }
 }

@@ -14,6 +14,7 @@ import 'package:help_neighbor/domaine/entites/entite_demande.dart';
 import 'package:help_neighbor/presentation/ecrans/profil/ecran_modifier_profil.dart';
 import 'package:help_neighbor/presentation/ecrans/discussion/ecran_detail_discussion.dart';
 import 'package:help_neighbor/presentation/ecrans/service/ecran_creer_service.dart';
+import 'package:help_neighbor/presentation/ecrans/admin/ecran_gestion_utilisateurs.dart'; // Ajout
 
 final router = GoRouter(
   initialLocation: '/connexion',
@@ -37,9 +38,9 @@ final router = GoRouter(
         return EcranDetailDiscussion(conversationId: id, autreNom: autreNom);
       },
     ),
-    // ✅ Route statique (plus spécifique) d'abord
+    // Route statique (plus spécifique) d'abord
     GoRoute(path: '/profil/modifier', name: 'modifier_profil', builder: (context, state) => const EcranModifierProfil()),
-    // ✅ Route dynamique ensuite
+    // Route dynamique ensuite
     GoRoute(path: '/profil/:id', name: 'profil', builder: (context, state) => EcranProfil(userId: state.pathParameters['id']!)),
     GoRoute(
       path: '/modifier-demande',
@@ -53,6 +54,12 @@ final router = GoRouter(
       path: '/creer-service',
       name: 'creer_service',
       builder: (context, state) => const EcranCreerService(),
+    ),
+    // Route admin (protégée dans l'écran)
+    GoRoute(
+      path: '/admin/utilisateurs',
+      name: 'admin_utilisateurs',
+      builder: (context, state) => const EcranGestionUtilisateurs(),
     ),
   ],
 );

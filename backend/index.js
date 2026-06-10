@@ -36,7 +36,7 @@ app.post('/api/auth/connexion', async (req, res) => {
   const { email, password } = req.body;
   try {
     const result = await pool.query(
-      'SELECT u.id, u.email, p.nom, p.prenom, u.mot_de_passe_hash FROM utilisateurs u LEFT JOIN profils p ON u.id = p.utilisateur_id WHERE u.email = $1',
+      'SELECT u.id, u.email, u.role, p.nom, p.prenom, u.mot_de_passe_hash FROM utilisateurs u LEFT JOIN profils p ON u.id = p.utilisateur_id WHERE u.email = $1',
       [email]
     );
     if (result.rows.length === 0) return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
@@ -44,7 +44,17 @@ app.post('/api/auth/connexion', async (req, res) => {
     const valid = await bcrypt.compare(password, user.mot_de_passe_hash);
     if (!valid) return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, utilisateur: { id: user.id, email: user.email, nom: user.nom ?? '', prenom: user.prenom ?? '', note_moyenne: 0 } });
+    res.json({
+      token,
+      utilisateur: {
+        id: user.id,
+        email: user.email,
+        role: user.role ?? 'user',
+        nom: user.nom ?? '',
+        prenom: user.prenom ?? '',
+        note_moyenne: 0
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -67,7 +77,17 @@ app.post('/api/auth/inscription', async (req, res) => {
     );
     await client.query('COMMIT');
     const token = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, utilisateur: { id: userId, email, nom, prenom, note_moyenne: 0 } });
+    res.json({
+      token,
+      utilisateur: {
+        id: userId,
+        email,
+        role: 'user',
+        nom,
+        prenom,
+        note_moyenne: 0
+      }
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ message: err.message });
@@ -915,6 +935,66 @@ app.put('/api/notifications/lire-tout', authenticateToken, async (req, res) => {
   }
 });
 
+// ---------- ADMINISTRATION ----------
+// Middleware isAdmin
+async function isAdmin(req, res, next) {
+  const userId = req.user.id;
+  try {
+    const result = await pool.query('SELECT role FROM utilisateurs WHERE id = $1', [userId]);
+    if (result.rows.length === 0 || result.rows[0].role !== 'admin') {
+      return res.status(403).json({ message: 'Accès réservé aux administrateurs' });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+// Liste de tous les utilisateurs
+app.get('/api/admin/utilisateurs', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.email, u.telephone, u.created_at, u.role,
+             p.nom, p.prenom,
+             (SELECT COUNT(*) FROM services WHERE utilisateur_id = u.id AND deleted_at IS NULL) as nb_services,
+             (SELECT COUNT(*) FROM demandes WHERE utilisateur_id = u.id) as nb_demandes
+      FROM utilisateurs u
+      LEFT JOIN profils p ON u.id = p.utilisateur_id
+      ORDER BY u.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Changer le rôle d'un utilisateur
+app.put('/api/admin/utilisateurs/:id/role', authenticateToken, isAdmin, validateUuidParam('id'), async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  if (!['user', 'admin'].includes(role)) {
+    return res.status(400).json({ message: 'Rôle invalide' });
+  }
+  try {
+    await pool.query('UPDATE utilisateurs SET role = $1 WHERE id = $2', [role, id]);
+    res.json({ message: 'Rôle mis à jour' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Supprimer un utilisateur (soft delete)
+app.delete('/api/admin/utilisateurs/:id', authenticateToken, isAdmin, validateUuidParam('id'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('UPDATE utilisateurs SET deleted_at = NOW() WHERE id = $1', [id]);
+    res.json({ message: 'Utilisateur désactivé' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Fonction utilitaire pour les notifications
 async function createNotification(utilisateurId, type, titre, message, donnees = null, actionUrl = null) {
   await pool.query(
     `INSERT INTO notifications (utilisateur_id, type, titre, message, donnees, action_url)
