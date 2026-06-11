@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:help_neighbor/domaine/entites/entite_avis.dart';
 import 'package:help_neighbor/domaine/entites/entite_service.dart';
 import 'package:help_neighbor/presentation/widgets/communs/etoiles_evaluation.dart';
 import 'package:help_neighbor/presentation/widgets/communs/dialogue_notation.dart';
@@ -9,6 +10,7 @@ import 'package:help_neighbor/presentation/fournisseurs/fournisseur_authentifica
 import 'package:help_neighbor/app/dependances.dart';
 import 'package:help_neighbor/donnees/depots/depot_service.dart';
 import 'package:help_neighbor/donnees/depots/depot_conversation.dart';
+import 'package:help_neighbor/donnees/depots/depot_avis.dart';
 import 'package:help_neighbor/coeur/extensions/extensions_context.dart';
 
 final serviceDetailProvider = FutureProvider.family<EntiteService, String>((ref, id) async {
@@ -18,6 +20,12 @@ final serviceDetailProvider = FutureProvider.family<EntiteService, String>((ref,
         (echec) => throw Exception(echec.message),
         (service) => service,
   );
+});
+
+final avisServiceProvider = FutureProvider.family<List<EntiteAvis>, String>((ref, serviceId) async {
+  final depot = getIt<DepotAvis>();
+  final result = await depot.listerAvis(cibleId: serviceId, cibleType: 'service');
+  return result.fold((echec) => [], (avis) => avis);
 });
 
 class EcranDetailService extends ConsumerWidget {
@@ -42,9 +50,33 @@ class EcranDetailService extends ConsumerWidget {
     );
   }
 
+  Future<void> _noter(BuildContext context, WidgetRef ref, String cibleType, String cibleId, {String? serviceId}) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => DialogueNotation(
+        titre: cibleType == 'service' ? 'Noter ce service' : 'Noter le prestataire',
+        cibleId: cibleId,
+        cibleType: cibleType,
+        serviceId: serviceId,
+        onSuccess: () {
+          ref.invalidate(serviceDetailProvider(id));
+          ref.invalidate(avisServiceProvider(id));
+        },
+      ),
+    );
+    if (result == true) {
+      ref.invalidate(serviceDetailProvider(id));
+      ref.invalidate(avisServiceProvider(id));
+      if (context.mounted) context.showSnackBar('Avis envoyé !');
+    }
+  }
+
+  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final serviceAsync = ref.watch(serviceDetailProvider(id));
+    final avisAsync = ref.watch(avisServiceProvider(id));
     final authState = ref.watch(authProvider);
     final currentUserId = authState.utilisateur?.id;
 
@@ -53,7 +85,6 @@ class EcranDetailService extends ConsumerWidget {
       body: serviceAsync.when(
         data: (service) {
           final isOwner = currentUserId == service.utilisateurId;
-          // Sécurisation absolue
           final utilisateurNom = (service.utilisateurNom ?? '').trim();
           final categorie = service.categorie ?? 'Sans catégorie';
           final description = service.description ?? '';
@@ -112,23 +143,63 @@ class EcranDetailService extends ConsumerWidget {
                   label: const Text('Contacter'),
                 ),
                 const SizedBox(height: 12),
-                if (!isOwner)
+                if (!isOwner) ...[
                   ElevatedButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => DialogueNotation(
-                          cibleId: service.utilisateurId,
-                          cibleType: 'utilisateur',
-                          serviceId: service.id,
-                          onSuccess: () => ref.invalidate(serviceDetailProvider(id)),
-                        ),
-                      );
-                    },
+                    onPressed: () => _noter(context, ref, 'utilisateur', service.utilisateurId, serviceId: service.id),
                     icon: const Icon(Icons.star),
                     label: const Text('Noter ce prestataire'),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[700]),
                   ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => _noter(context, ref, 'service', service.id, serviceId: service.id),
+                    icon: const Icon(Icons.rate_review),
+                    label: const Text('Noter ce service'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                const Text('Avis sur ce service', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                avisAsync.when(
+                  data: (avis) => avis.isEmpty
+                      ? const Padding(padding: EdgeInsets.all(16), child: Text('Aucun avis pour ce service.'))
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: avis.length,
+                    itemBuilder: (ctx, i) {
+                      final a = avis[i];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: const Icon(Icons.person),
+                          title: Text(a.auteurNom),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  ...List.generate(5, (star) => Icon(
+                                    star < a.noteGlobale.round() ? Icons.star : Icons.star_border,
+                                    size: 16,
+                                    color: Colors.orange,
+                                  )),
+                                  const SizedBox(width: 8),
+                                  Text('${a.noteGlobale.toStringAsFixed(1)}/5'),
+                                ],
+                              ),
+                              if (a.commentaire != null && a.commentaire!.isNotEmpty) Text(a.commentaire!),
+                              Text(_formatDate(a.createdAt), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Text('Erreur chargement avis : $err'),
+                ),
               ],
             ),
           );
@@ -150,7 +221,7 @@ class EcranDetailService extends ConsumerWidget {
           ),
         ),
       ),
-      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 0), // retiré const
+      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 0),
     );
   }
 }

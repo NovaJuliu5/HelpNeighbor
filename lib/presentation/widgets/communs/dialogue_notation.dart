@@ -10,6 +10,7 @@ class DialogueNotation extends ConsumerStatefulWidget {
   final String cibleType;
   final String? serviceId;
   final String? demandeId;
+  final String? titre;          // Ajout du paramètre
   final VoidCallback? onSuccess;
 
   const DialogueNotation({
@@ -18,6 +19,7 @@ class DialogueNotation extends ConsumerStatefulWidget {
     required this.cibleType,
     this.serviceId,
     this.demandeId,
+    this.titre,
     this.onSuccess,
   });
 
@@ -48,7 +50,10 @@ class _DialogueNotationState extends ConsumerState<DialogueNotation> {
     final depot = getIt<DepotAvis>();
     final result = await depot.getAvisCurrent(widget.cibleId, serviceId: widget.serviceId);
     result.fold(
-          (echec) => context.showSnackBar(echec.message, isError: true),
+          (echec) {
+        if (mounted) context.showSnackBar(echec.message, isError: true);
+        setState(() => _isLoading = false);
+      },
           (avis) {
         if (avis != null) {
           setState(() {
@@ -57,7 +62,7 @@ class _DialogueNotationState extends ConsumerState<DialogueNotation> {
             _commentaireController.text = avis.commentaire ?? '';
           });
         }
-        _isLoading = false;
+        setState(() => _isLoading = false);
       },
     );
   }
@@ -69,8 +74,10 @@ class _DialogueNotationState extends ConsumerState<DialogueNotation> {
         content: SizedBox(width: 50, height: 50, child: CircularProgressIndicator()),
       );
     }
+    // Utiliser le titre personnalisé s'il est fourni, sinon le titre par défaut
+    final title = widget.titre ?? (_existingAvisId == null ? 'Noter ce prestataire' : 'Modifier votre avis');
     return AlertDialog(
-      title: Text(_existingAvisId == null ? 'Noter ce prestataire' : 'Modifier votre avis'),
+      title: Text(title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -103,7 +110,9 @@ class _DialogueNotationState extends ConsumerState<DialogueNotation> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
         ElevatedButton(
           onPressed: _noteGlobale == 0 ? null : _envoyerAvis,
-          child: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator()) : const Text('Envoyer'),
+          child: _isSaving
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Envoyer'),
         ),
       ],
     );
@@ -126,13 +135,17 @@ class _DialogueNotationState extends ConsumerState<DialogueNotation> {
     } else {
       result = await depot.creerAvis(data);
     }
-    setState(() => _isSaving = false);
+    if (mounted) setState(() => _isSaving = false);
     result.fold(
-          (echec) => context.showSnackBar(echec.message, isError: true),
+          (echec) {
+        if (mounted) context.showSnackBar(echec.message, isError: true);
+      },
           (_) {
-        context.showSnackBar(_existingAvisId == null ? 'Merci pour votre avis !' : 'Avis modifié !');
-        widget.onSuccess?.call();
-        Navigator.pop(context);
+        if (mounted) {
+          context.showSnackBar(_existingAvisId == null ? 'Merci pour votre avis !' : 'Avis modifié !');
+          widget.onSuccess?.call();
+          Navigator.pop(context);
+        }
       },
     );
   }

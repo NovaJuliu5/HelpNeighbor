@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:help_neighbor/app/dependances.dart';
+import 'package:help_neighbor/coeur/extensions/extensions_context.dart';
+import 'package:help_neighbor/domaine/entites/entite_avis.dart';
 import 'package:help_neighbor/donnees/depots/depot_authentification.dart';
+import 'package:help_neighbor/donnees/depots/depot_avis.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_authentification.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_utilisateur.dart';
 import 'package:help_neighbor/presentation/widgets/communs/barre_navigation_bas_personnalisee.dart';
+import 'package:help_neighbor/presentation/widgets/communs/dialogue_notation.dart';
+
+final avisUtilisateurProvider = FutureProvider.family<List<EntiteAvis>, String>((ref, userId) async {
+  final depot = getIt<DepotAvis>();
+  final result = await depot.listerAvis(cibleId: userId, cibleType: 'utilisateur');
+  return result.fold((echec) => [], (avis) => avis);
+});
 
 class EcranProfil extends ConsumerWidget {
   final String userId;
@@ -16,8 +26,8 @@ class EcranProfil extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final isOwnProfile = authState.utilisateur?.id == userId;
     final isAdmin = authState.utilisateur?.role == 'admin';
-    // Utilisation du family provider avec l'ID passé en paramètre
     final profilAsync = ref.watch(profilUtilisateurProvider(userId));
+    final avisAsync = ref.watch(avisUtilisateurProvider(userId));
 
     return Scaffold(
       appBar: AppBar(
@@ -41,6 +51,7 @@ class EcranProfil extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // En-tête
               Row(
                 children: [
                   CircleAvatar(
@@ -70,10 +81,14 @@ class EcranProfil extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
+
+              // Bio
               const Text('À propos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(utilisateur.bio ?? 'Aucune bio'),
               const SizedBox(height: 24),
+
+              // Statistiques
               const Text('Statistiques', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Row(
@@ -84,9 +99,85 @@ class EcranProfil extends ConsumerWidget {
                   _StatCard('Note', utilisateur.noteMoyenne.toStringAsFixed(1)),
                 ],
               ),
-              // 🔐 Section Administration (visible uniquement pour son propre profil admin)
-              if (isOwnProfile && isAdmin) ...[
+              const SizedBox(height: 16),
+
+              // Bouton Noter (si ce n'est pas son propre profil)
+              if (!isOwnProfile) ...[
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.star_rate),
+                  label: const Text('Noter cet utilisateur'),
+                  onPressed: () async {
+                    final result = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => DialogueNotation(
+                        titre: 'Noter ${utilisateur.prenom} ${utilisateur.nom}',
+                        cibleId: userId,
+                        cibleType: 'utilisateur',
+                      ),
+                    );
+                    if (result == true) {
+                      ref.invalidate(profilUtilisateurProvider(userId));
+                      ref.invalidate(avisUtilisateurProvider(userId));
+                      if (context.mounted) {
+                        context.showSnackBar('Avis envoyé, merci !');
+                      }
+                    }
+                  },
+                ),
                 const SizedBox(height: 24),
+              ],
+
+              // Liste des avis
+              const Text('Avis des membres', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              avisAsync.when(
+                data: (avis) => avis.isEmpty
+                    ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('Aucun avis pour le moment.'),
+                )
+                    : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: avis.length,
+                  itemBuilder: (ctx, i) {
+                    final a = avis[i];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        leading: const Icon(Icons.person, size: 32),
+                        title: Text(a.auteurNom),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                ...List.generate(5, (star) => Icon(
+                                  star < a.noteGlobale.round() ? Icons.star : Icons.star_border,
+                                  size: 16,
+                                  color: Colors.orange,
+                                )),
+                                const SizedBox(width: 8),
+                                Text('${a.noteGlobale.toStringAsFixed(1)}/5'),
+                              ],
+                            ),
+                            if (a.commentaire != null && a.commentaire!.isNotEmpty)
+                              Text(a.commentaire!),
+                            Text(_formatDate(a.createdAt),
+                                style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Text('Erreur chargement avis: $err'),
+              ),
+              const SizedBox(height: 24),
+
+              // Section administration
+              if (isOwnProfile && isAdmin) ...[
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -106,7 +197,7 @@ class EcranProfil extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Erreur: $err')),
       ),
-      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 4),
+      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 4),
     );
   }
 
@@ -129,6 +220,10 @@ class EcranProfil extends ConsumerWidget {
       ref.invalidate(profilUtilisateurProvider(userId));
       context.go('/connexion');
     }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
