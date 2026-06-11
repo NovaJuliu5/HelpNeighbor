@@ -13,6 +13,7 @@ import 'package:help_neighbor/donnees/depots/depot_notification.dart';   // AJOU
 import 'package:help_neighbor/services/localisation/service_localisation.dart';
 import 'package:help_neighbor/donnees/depots/depot_avis.dart';
 import 'package:help_neighbor/donnees/depots/depot_admin.dart';
+import '../donnees/depots/depot_signalement.dart';
 
 final getIt = GetIt.instance;
 
@@ -32,4 +33,5 @@ Future<void> initDependances() async {
   getIt.registerSingleton<ServiceLocalisation>(ServiceLocalisation());
   getIt.registerSingleton<DepotAvis>(DepotAvis(getIt()));
   getIt.registerSingleton<DepotAdmin>(DepotAdmin(getIt()));
+  getIt.registerSingleton<DepotSignalement>(DepotSignalement(getIt()));
 }

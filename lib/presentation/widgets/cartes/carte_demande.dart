@@ -6,6 +6,8 @@ import 'package:help_neighbor/presentation/fournisseurs/fournisseur_authentifica
 import 'package:help_neighbor/presentation/ecrans/accueil/fournisseur_accueil.dart';
 import 'package:help_neighbor/app/dependances.dart';
 import 'package:help_neighbor/donnees/depots/depot_demande.dart';
+import 'package:help_neighbor/donnees/depots/depot_signalement.dart';
+import 'package:help_neighbor/coeur/extensions/extensions_context.dart';
 
 class CarteDemande extends ConsumerWidget {
   final EntiteDemande demande;
@@ -45,6 +47,34 @@ class CarteDemande extends ConsumerWidget {
 
   void _modifier(BuildContext context) {
     context.push('/modifier-demande', extra: demande);
+  }
+
+  Future<void> _signaler(BuildContext context, WidgetRef ref) async {
+    final motif = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Pourquoi signalez-vous ce contenu ?'),
+        children: [
+          SimpleDialogOption(child: const Text('Contenu inapproprié'), onPressed: () => Navigator.pop(ctx, 'inapproprié')),
+          SimpleDialogOption(child: const Text('Spam'), onPressed: () => Navigator.pop(ctx, 'spam')),
+          SimpleDialogOption(child: const Text('Harcèlement'), onPressed: () => Navigator.pop(ctx, 'harcèlement')),
+          SimpleDialogOption(child: const Text('Fausse information'), onPressed: () => Navigator.pop(ctx, 'fausse_info')),
+          const Divider(),
+          SimpleDialogOption(child: const Text('Annuler'), onPressed: () => Navigator.pop(ctx, null)),
+        ],
+      ),
+    );
+    if (motif == null) return;
+    final depot = getIt<DepotSignalement>();
+    final result = await depot.signaler(
+      cibleType: 'demande',
+      cibleId: demande.id,
+      motif: motif,
+    );
+    result.fold(
+          (echec) => context.showSnackBar(echec.message, isError: true),
+          (msg) => context.showSnackBar(msg),
+    );
   }
 
   @override
@@ -94,16 +124,21 @@ class CarteDemande extends ConsumerWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isOwner)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined, size: 20),
+              onPressed: () => _signaler(context, ref),
+              tooltip: 'Signaler',
+            ),
+            if (isOwner) ...[
               IconButton(
                 icon: const Icon(Icons.edit, color: Colors.blue),
                 onPressed: () => _modifier(context),
               ),
-            if (isOwner)
               IconButton(
                 icon: const Icon(Icons.delete, color: Colors.red),
                 onPressed: () => _supprimer(context, ref),
               ),
+            ],
             Chip(label: Text(demande.statut)),
           ],
         ),

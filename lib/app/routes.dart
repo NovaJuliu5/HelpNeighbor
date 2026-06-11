@@ -14,7 +14,8 @@ import 'package:help_neighbor/domaine/entites/entite_demande.dart';
 import 'package:help_neighbor/presentation/ecrans/profil/ecran_modifier_profil.dart';
 import 'package:help_neighbor/presentation/ecrans/discussion/ecran_detail_discussion.dart';
 import 'package:help_neighbor/presentation/ecrans/service/ecran_creer_service.dart';
-import 'package:help_neighbor/presentation/ecrans/admin/ecran_gestion_utilisateurs.dart'; // Ajout
+import 'package:help_neighbor/presentation/ecrans/admin/ecran_gestion_utilisateurs.dart';
+import 'package:help_neighbor/presentation/ecrans/admin/ecran_signalements.dart'; // Ajout
 
 final router = GoRouter(
   initialLocation: '/connexion',
@@ -55,11 +56,24 @@ final router = GoRouter(
       name: 'creer_service',
       builder: (context, state) => const EcranCreerService(),
     ),
-    // Route admin (protégée dans l'écran)
+    // Routes admin
     GoRoute(
       path: '/admin/utilisateurs',
       name: 'admin_utilisateurs',
       builder: (context, state) => const EcranGestionUtilisateurs(),
+    ),
+    GoRoute(
+      path: '/admin/signalements',
+      name: 'admin_signalements',
+      builder: (context, state) {
+        // Récupération des paramètres de requête (type et id) si présents
+        final type = state.uri.queryParameters['type'];
+        final id = state.uri.queryParameters['id'];
+        // Passer les paramètres à l’écran (vous pouvez les stocker dans l'état si nécessaire)
+        return const EcranSignalements();
+        // Si votre écran nécessite ces paramètres, décommentez la ligne suivante
+        // return EcranSignalements(initialType: type, initialId: id);
+      },
     ),
   ],
 );
