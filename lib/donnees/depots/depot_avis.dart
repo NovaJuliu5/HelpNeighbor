@@ -25,17 +25,18 @@ class DepotAvis {
     }
   }
 
+  // Modification : listerAvis accepte désormais serviceId optionnel
   Future<Either<Echec, List<EntiteAvis>>> listerAvis({
-    required String cibleId,
-    required String cibleType,
+    String? cibleId,
+    String? cibleType,
     String? serviceId,
   }) async {
     try {
-      final response = await _api.get('/avis', query: {
-        'cible_id': cibleId,
-        'cible_type': cibleType,
-        if (serviceId != null) 'service_id': serviceId,
-      });
+      final query = <String, dynamic>{};
+      if (cibleId != null) query['cible_id'] = cibleId;
+      if (cibleType != null) query['cible_type'] = cibleType;
+      if (serviceId != null) query['service_id'] = serviceId;
+      final response = await _api.get('/avis', query: query);
       final list = (response.data as List).map((json) => EntiteAvis.fromJson(json)).toList();
       return Right(list);
     } catch (e) {

@@ -18,35 +18,17 @@ class CarteDemande extends ConsumerWidget {
     context.push('/profil/${demande.utilisateurId}');
   }
 
-  Future<void> _supprimer(BuildContext context, WidgetRef ref) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer la demande'),
-        content: const Text('Voulez-vous vraiment supprimer cette demande ?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Oui')),
-        ],
-      ),
+  Future<void> _changerStatut(BuildContext context, WidgetRef ref) async {
+    final nouveauStatut = demande.statut == 'ouverte' ? 'fermee' : 'ouverte';
+    final depot = getIt<DepotDemande>();
+    final result = await depot.changerStatutDemande(demande.id, nouveauStatut);
+    result.fold(
+          (echec) => context.showSnackBar(echec.message, isError: true),
+          (_) {
+        context.showSnackBar(nouveauStatut == 'ouverte' ? 'Demande ouverte' : 'Demande fermée');
+        ref.invalidate(demandesProchesProvider);
+      },
     );
-    if (confirm == true) {
-      final depot = getIt<DepotDemande>();
-      final result = await depot.supprimerDemande(demande.id);
-      result.fold(
-            (echec) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(echec.message, style: const TextStyle(color: Colors.white)))),
-            (_) {
-          ref.invalidate(demandesProchesProvider);
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Demande supprimée avec succès')));
-        },
-      );
-    }
-  }
-
-  void _modifier(BuildContext context) {
-    context.push('/modifier-demande', extra: demande);
   }
 
   Future<void> _signaler(BuildContext context, WidgetRef ref) async {
@@ -105,6 +87,8 @@ class CarteDemande extends ConsumerWidget {
             Text(demande.utilisateurNom),
             Text(demande.description, maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
+            Text('Prix : ${demande.prix} Ar', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
             Row(
               children: [
                 const Spacer(),
@@ -129,20 +113,21 @@ class CarteDemande extends ConsumerWidget {
               onPressed: () => _signaler(context, ref),
               tooltip: 'Signaler',
             ),
-            if (isOwner) ...[
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.blue),
-                onPressed: () => _modifier(context),
+            if (isOwner)
+              OutlinedButton(
+                onPressed: () => _changerStatut(context, ref),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: demande.statut == 'ouverte' ? Colors.red : Colors.green,
+                  side: BorderSide(color: demande.statut == 'ouverte' ? Colors.red : Colors.green),
+                ),
+                child: Text(demande.statut == 'ouverte' ? 'Fermer' : 'Ouvrir'),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _supprimer(context, ref),
-              ),
-            ],
-            Chip(label: Text(demande.statut)),
           ],
         ),
-        onTap: () => context.push('/demande/${demande.id}'),
+        onTap: () {
+          print('🔍 Navigation vers demande ID : ${demande.id}');
+          context.push('/demande/${demande.id}');
+        },
       ),
     );
   }

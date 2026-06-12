@@ -19,7 +19,7 @@ class DepotOffre {
 
   Future<Either<Echec, List<EntiteOffre>>> getOffresPourDemande(String demandeId) async {
     try {
-      final response = await _api.get('/demandes/$demandeId/offres');
+      final response = await _api.get('/offres/demande/$demandeId');
       final List list = response.data;
       return Right(list.map((e) => EntiteOffre.fromJson(e)).toList());
     } catch (e) {

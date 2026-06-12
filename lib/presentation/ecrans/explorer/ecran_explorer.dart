@@ -25,7 +25,6 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
   String _selectedCategoryDemandes = 'Toutes';
   bool _showServices = true;
 
-  // Liste des catégories (commune aux services et demandes)
   final List<String> _categories = [
     'Toutes',
     'Bricolage',
@@ -48,20 +47,20 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
   }
 
   List<EntiteDemande> _filterDemandes(List<EntiteDemande> demandes) {
-    // Pour les demandes, on filtre par titre/description et par catégorie
-    // Note : la catégorie n'est pas encore disponible dans EntiteDemande,
-    // on utilise une approximation (le titre ou la description contient la catégorie ?)
-    // À améliorer plus tard si besoin.
     return demandes.where((demande) {
       final matchesQuery = _searchQuery.isEmpty ||
           demande.titre.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           demande.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      // Pour les demandes, on n'a pas de champ catégorie dans EntiteDemande actuellement.
-      // On peut soit ajouter ce champ, soit ignorer le filtre catégorie pour les demandes.
-      // Ici on ignore le filtre (on retourne seulement matchesQuery).
-      // Pour activer le filtrage, il faudrait étendre EntiteDemande avec un champ 'categorie'.
       return matchesQuery;
     }).toList();
+  }
+
+  Future<void> _refresh() async {
+    if (_showServices) {
+      await ref.refresh(servicesProchesProvider.future);
+    } else {
+      await ref.refresh(demandesProchesProvider.future);
+    }
   }
 
   @override
@@ -80,15 +79,18 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
               icon: const Icon(Icons.person),
               onPressed: () => context.push('/profil/$userId'),
             ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refresh,
+            tooltip: 'Rafraîchir',
+          ),
         ],
         bottom: PreferredSize(
-          // Hauteur augmentée pour accueillir tous les éléments sans overflow
           preferredSize: const Size.fromHeight(160),
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
               children: [
-                // Sélecteur Services / Demandes avec icônes
                 SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment<bool>(
@@ -106,14 +108,12 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
                   onSelectionChanged: (Set<bool> selection) {
                     setState(() {
                       _showServices = selection.first;
-                      // Réinitialiser la recherche lors du changement d'onglet
                       _searchQuery = '';
                       _searchController.clear();
                     });
                   },
                 ),
                 const SizedBox(height: 8),
-                // Barre de recherche
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
@@ -137,7 +137,6 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
                   onChanged: (value) => setState(() => _searchQuery = value),
                 ),
                 const SizedBox(height: 8),
-                // Filtre par catégorie (pour les deux modes)
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
@@ -174,10 +173,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
       ),
       body: _showServices
           ? RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(servicesProchesProvider);
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
+        onRefresh: _refresh,
         child: servicesAsync.when(
           data: (services) {
             final filtered = _filterServices(services);
@@ -195,10 +191,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
         ),
       )
           : RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(demandesProchesProvider);
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
+        onRefresh: _refresh,
         child: demandesAsync.when(
           data: (demandes) {
             final filtered = _filterDemandes(demandes);
@@ -215,7 +208,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
           error: (err, _) => WidgetErreur(message: err.toString()),
         ),
       ),
-      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 1),
+      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 1),
     );
   }
 }

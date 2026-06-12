@@ -91,7 +91,7 @@ class CarteService extends ConsumerWidget {
               children: [
                 EtoilesEvaluation(note: service.noteMoyenne, taille: 14),
                 const SizedBox(width: 4),
-                Text('${service.noteMoyenne.toStringAsFixed(1)} · ${service.nbAvis} avis'),
+                Text(service.noteMoyenne.toStringAsFixed(1)), // nombre d'avis supprimé
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

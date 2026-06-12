@@ -4,13 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:help_neighbor/domaine/entites/entite_demande.dart';
 import 'package:help_neighbor/domaine/entites/entite_offre.dart';
 import 'package:help_neighbor/presentation/widgets/communs/barre_navigation_bas_personnalisee.dart';
-import 'package:help_neighbor/presentation/widgets/communs/dialogue_notation.dart'; // AJOUT
+import 'package:help_neighbor/presentation/widgets/communs/dialogue_notation.dart';
 import 'package:help_neighbor/app/dependances.dart';
 import 'package:help_neighbor/donnees/depots/depot_demande.dart';
 import 'package:help_neighbor/donnees/depots/depot_offre.dart';
 import 'package:help_neighbor/donnees/depots/depot_conversation.dart';
 import 'package:help_neighbor/coeur/extensions/extensions_context.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_authentification.dart';
+import 'package:help_neighbor/presentation/ecrans/accueil/fournisseur_accueil.dart';
 
 class EcranDetailDemande extends ConsumerStatefulWidget {
   final String id;
@@ -59,6 +60,38 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     setState(() => _isLoading = false);
   }
 
+  Future<void> _supprimer() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer la demande'),
+        content: const Text('Voulez-vous vraiment supprimer cette demande ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Oui')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      final depot = getIt<DepotDemande>();
+      final result = await depot.supprimerDemande(widget.id);
+      result.fold(
+            (echec) => context.showSnackBar(echec.message, isError: true),
+            (_) {
+          ref.invalidate(demandesProchesProvider);
+          context.showSnackBar('Demande supprimée avec succès');
+          context.pop();
+        },
+      );
+    }
+  }
+
+  void _modifier() {
+    if (_demande != null) {
+      context.push('/modifier-demande', extra: _demande);
+    }
+  }
+
   Future<void> _repondreOffre(String offreId, String statut) async {
     final depot = getIt<DepotOffre>();
     final result = await depot.repondreOffre(offreId, statut);
@@ -89,7 +122,6 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     final authState = ref.watch(authProvider);
     final isOwner = authState.utilisateur?.id == _demande?.utilisateurId;
     final isOpen = _demande?.statut == 'ouverte';
-    // Trouver l'offre acceptée (s'il y en a une)
     EntiteOffre? offreAcceptee;
     for (var offre in _offres) {
       if (offre.statut == 'acceptee') {
@@ -99,7 +131,23 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Détail de la demande')),
+      appBar: AppBar(
+        title: const Text('Détail de la demande'),
+        actions: [
+          if (isOwner) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: _modifier,
+              tooltip: 'Modifier',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _supprimer,
+              tooltip: 'Supprimer',
+            ),
+          ],
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -117,6 +165,8 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
               Text(_demande!.description),
               const SizedBox(height: 8),
               Text('Statut: ${_demande!.statut}'),
+              const SizedBox(height: 8),
+              Text('Prix : ${_demande!.prix} Ar'),
               const SizedBox(height: 16),
               if (!isOwner && isOpen) ...[
                 _FormulaireOffre(demandeId: widget.id, onOffreEnvoyee: _chargerDonnees),
@@ -140,13 +190,11 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.check, color: Colors.green),
-                          onPressed: () =>
-                              _repondreOffre(offre.id, 'acceptee'),
+                          onPressed: () => _repondreOffre(offre.id, 'acceptee'),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () =>
-                              _repondreOffre(offre.id, 'refusee'),
+                          onPressed: () => _repondreOffre(offre.id, 'refusee'),
                         ),
                       ],
                     )
@@ -154,7 +202,6 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                   ),
                 )),
               ],
-              // Bouton "Noter le prestataire" (visible si offre acceptée)
               if (isOwner && offreAcceptee != null) ...[
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -162,7 +209,7 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                     showDialog(
                       context: context,
                       builder: (_) => DialogueNotation(
-                        cibleId: offreAcceptee!.prestataireId,   // ← ajout du !
+                        cibleId: offreAcceptee!.prestataireId,
                         cibleType: 'utilisateur',
                         demandeId: widget.id,
                       ),
@@ -179,11 +226,12 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
           ),
         ),
       ),
-      bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 3),
+      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 3),
     );
   }
 }
 
+// Formulaire d'offre inchangé
 class _FormulaireOffre extends ConsumerStatefulWidget {
   final String demandeId;
   final VoidCallback onOffreEnvoyee;

@@ -19,6 +19,7 @@ class EcranModifierDemande extends ConsumerStatefulWidget {
 class _EcranModifierDemandeState extends ConsumerState<EcranModifierDemande> {
   late final TextEditingController _titreController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _prixController;
   bool _isLoading = false;
 
   @override
@@ -26,12 +27,14 @@ class _EcranModifierDemandeState extends ConsumerState<EcranModifierDemande> {
     super.initState();
     _titreController = TextEditingController(text: widget.demande.titre);
     _descriptionController = TextEditingController(text: widget.demande.description);
+    _prixController = TextEditingController(text: widget.demande.prix.toString());
   }
 
   @override
   void dispose() {
     _titreController.dispose();
     _descriptionController.dispose();
+    _prixController.dispose();
     super.dispose();
   }
 
@@ -52,6 +55,12 @@ class _EcranModifierDemandeState extends ConsumerState<EcranModifierDemande> {
               controller: _descriptionController,
               maxLines: 4,
               decoration: const InputDecoration(labelText: 'DESCRIPTION'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _prixController,
+              decoration: const InputDecoration(labelText: 'Prix (Ar)'),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 24),
             _isLoading
@@ -76,6 +85,7 @@ class _EcranModifierDemandeState extends ConsumerState<EcranModifierDemande> {
     final data = {
       'titre': _titreController.text,
       'description': _descriptionController.text,
+      'prix': double.tryParse(_prixController.text) ?? 0.0,
     };
     final depot = getIt<DepotDemande>();
     final result = await depot.mettreAJourDemande(widget.demande.id, data);

@@ -17,6 +17,7 @@ class EcranCreerDemande extends ConsumerStatefulWidget {
 class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
   final _titreController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _prixController = TextEditingController();
   String _categorieNom = 'Bricolage';
   String _urgence = 'Pas pressé';
   String _remuneration = 'Gratuit / Échange';
@@ -72,6 +73,14 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
               onChanged: (val) => setState(() => _remuneration = val!),
               decoration: const InputDecoration(labelText: 'RÉMUNÉRATION'),
             ),
+            if (_remuneration == 'Montant en Ar') ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _prixController,
+                decoration: const InputDecoration(labelText: 'Prix (Ar)', hintText: 'ex: 5000'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
             const SizedBox(height: 24),
             _isLoading
                 ? const CircularProgressIndicator()
@@ -79,7 +88,6 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
               onPressed: _publier,
               child: const Text('Publier ma demande'),
             ),
-
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => context.push('/creer-service'),
@@ -97,11 +105,16 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
       context.showSnackBar('Veuillez remplir tous les champs', isError: true);
       return;
     }
+    if (_remuneration == 'Montant en Ar' && _prixController.text.trim().isEmpty) {
+      context.showSnackBar('Veuillez indiquer un prix', isError: true);
+      return;
+    }
     setState(() => _isLoading = true);
     final data = {
       'titre': _titreController.text,
       'description': _descriptionController.text,
       'categorie_nom': _categorieNom,
+      'prix': _remuneration == 'Montant en Ar' ? int.tryParse(_prixController.text) ?? 0 : 0,
     };
     final useCase = CreerDemandeUseCase(getIt());
     final result = await useCase.executer(data);

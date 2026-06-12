@@ -24,7 +24,7 @@ final serviceDetailProvider = FutureProvider.family<EntiteService, String>((ref,
 
 final avisServiceProvider = FutureProvider.family<List<EntiteAvis>, String>((ref, serviceId) async {
   final depot = getIt<DepotAvis>();
-  final result = await depot.listerAvis(cibleId: serviceId, cibleType: 'service');
+  final result = await depot.listerAvis(serviceId: serviceId);
   return result.fold((echec) => [], (avis) => avis);
 });
 
@@ -54,7 +54,7 @@ class EcranDetailService extends ConsumerWidget {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => DialogueNotation(
-        titre: cibleType == 'service' ? 'Noter ce service' : 'Noter le prestataire',
+        titre: 'Noter le prestataire',
         cibleId: cibleId,
         cibleType: cibleType,
         serviceId: serviceId,
@@ -91,7 +91,13 @@ class EcranDetailService extends ConsumerWidget {
           final prixTexte = (service.prix?.toStringAsFixed(0) ?? '0');
           final distanceTexte = (service.distanceKm?.toStringAsFixed(1) ?? '0.0');
           final noteTexte = (service.noteMoyenne?.toStringAsFixed(1) ?? '0.0');
-          final nbAvisTexte = (service.nbAvis ?? 0).toString();
+
+          // Compteur d'avis dynamique (basé sur la liste réelle)
+          final nbAvisReels = avisAsync.when(
+            data: (avis) => avis.length,
+            loading: () => service.nbAvis ?? 0,
+            error: (_, __) => service.nbAvis ?? 0,
+          );
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -120,7 +126,7 @@ class EcranDetailService extends ConsumerWidget {
                             children: [
                               EtoilesEvaluation(note: service.noteMoyenne, taille: 16),
                               const SizedBox(width: 4),
-                              Text('$noteTexte ($nbAvisTexte avis)'),
+                              Text('$noteTexte ($nbAvisReels avis)'),
                             ],
                           ),
                         ],
@@ -143,21 +149,13 @@ class EcranDetailService extends ConsumerWidget {
                   label: const Text('Contacter'),
                 ),
                 const SizedBox(height: 12),
-                if (!isOwner) ...[
+                if (!isOwner)
                   ElevatedButton.icon(
                     onPressed: () => _noter(context, ref, 'utilisateur', service.utilisateurId, serviceId: service.id),
                     icon: const Icon(Icons.star),
                     label: const Text('Noter ce prestataire'),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[700]),
                   ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () => _noter(context, ref, 'service', service.id, serviceId: service.id),
-                    icon: const Icon(Icons.rate_review),
-                    label: const Text('Noter ce service'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                  ),
-                ],
                 const SizedBox(height: 24),
                 const Text('Avis sur ce service', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
