@@ -24,8 +24,18 @@ class EcranProfil extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+
+    // Si l'utilisateur n'est pas encore chargé, afficher un indicateur
+    if (authState.utilisateur == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+        bottomNavigationBar: BarreNavigationBasPersonnalisee(selectedIndex: 4),
+      );
+    }
+
     final isOwnProfile = authState.utilisateur?.id == userId;
     final isAdmin = authState.utilisateur?.role == 'admin';
+    final isModerateur = authState.utilisateur?.role == 'moderateur';
     final profilAsync = ref.watch(profilUtilisateurProvider(userId));
     final avisAsync = ref.watch(avisUtilisateurProvider(userId));
 
@@ -176,16 +186,26 @@ class EcranProfil extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // Section administration
-              if (isOwnProfile && isAdmin) ...[
+              // Section administration (visible pour admin OU moderateur sur son propre profil)
+              if (isOwnProfile && (isAdmin || isModerateur)) ...[
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: Colors.blue.shade50,
+                  color: isAdmin ? Colors.blue.shade50 : Colors.green.shade50,
                   child: ListTile(
-                    leading: const Icon(Icons.admin_panel_settings, color: Colors.blue),
-                    title: const Text('Gestion des utilisateurs', style: TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: const Text('Accéder à l’espace d’administration'),
+                    leading: Icon(
+                      isAdmin ? Icons.admin_panel_settings : Icons.shield,
+                      color: isAdmin ? Colors.blue : Colors.green,
+                    ),
+                    title: Text(
+                      isAdmin ? 'Gestion des utilisateurs' : 'Modération - Utilisateurs',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Text(
+                      isAdmin
+                          ? 'Accéder à l’espace d’administration'
+                          : 'Voir et gérer les utilisateurs (modérateur)',
+                    ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () => context.push('/admin/utilisateurs'),
                   ),
@@ -216,8 +236,14 @@ class EcranProfil extends ConsumerWidget {
     if (confirm == true) {
       final depot = getIt<DepotAuthentification>();
       await depot.deconnexion();
+
+      // Invalider l'état d'authentification pour que les widgets réagissent
       ref.invalidate(authProvider);
-      ref.invalidate(profilUtilisateurProvider(userId));
+
+      // ❌ NE PAS invalider profilUtilisateurProvider(userId)
+      // Cela éviterait de relancer une requête après suppression du token
+
+      // Rediriger vers l'écran de connexion
       context.go('/connexion');
     }
   }

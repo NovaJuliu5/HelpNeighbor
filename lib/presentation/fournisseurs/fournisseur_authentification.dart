@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:help_neighbor/app/dependances.dart';
 import 'package:help_neighbor/domaine/cas_utilisation/authentification/connexion_usecase.dart';
 import 'package:help_neighbor/domaine/cas_utilisation/authentification/inscription_usecase.dart';
 import 'package:help_neighbor/domaine/entites/entite_utilisateur.dart';
 import 'package:help_neighbor/coeur/erreurs/echec.dart';
+import 'package:help_neighbor/donnees/sources_donnees/locales/aide_preferences.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final connexionUseCase = ConnexionUseCase(getIt());
@@ -32,7 +34,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         print('❌ [AUTH] Échec connexion : ${echec.message}');
         state = AuthState(erreur: echec);
       },
-          (utilisateur) {
+          (utilisateur) async {
         print('✅ [AUTH] Utilisateur reçu après connexion : id=${utilisateur.id}, role=${utilisateur.role}');
         if (!_isValidUuid(utilisateur.id)) {
           print('⚠️ [AUTH] ID invalide détecté : ${utilisateur.id} (n’est pas un UUID)');
@@ -40,6 +42,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           print('✅ [AUTH] ID valide (format UUID)');
         }
         state = AuthState(utilisateur: utilisateur);
+        // Petit délai pour laisser le temps au token d'être écrit dans le stockage
+        await Future.delayed(const Duration(milliseconds: 1000));
       },
     );
   }
@@ -53,7 +57,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         print('❌ [AUTH] Échec inscription : ${echec.message}');
         state = AuthState(erreur: echec);
       },
-          (utilisateur) {
+          (utilisateur) async {
         print('✅ [AUTH] Utilisateur inscrit et connecté : id=${utilisateur.id}, role=${utilisateur.role}');
         if (!_isValidUuid(utilisateur.id)) {
           print('⚠️ [AUTH] ID invalide détecté : ${utilisateur.id} (n’est pas un UUID)');
@@ -61,13 +65,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
           print('✅ [AUTH] ID valide (format UUID)');
         }
         state = AuthState(utilisateur: utilisateur);
+        await Future.delayed(const Duration(milliseconds: 1000));
       },
     );
   }
 
-  void deconnexion() {
+  Future<void> deconnexion() async {
     print('🚪 [AUTH] Déconnexion de l’utilisateur');
+    // Afficher la stack trace pour identifier l'appel
+    print(StackTrace.current);
+    await getIt<FlutterSecureStorage>().delete(key: 'token');
+    await AidePreferences.effacerToken();
     state = AuthState();
+    print('✅ [AUTH] Token supprimé, état réinitialisé');
   }
 
   bool _isValidUuid(String value) {

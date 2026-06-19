@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { authenticateToken } = require('../middleware/auth');
-const { isAdmin } = require('../middleware/admin');
+const { isModerateurOrAdmin } = require('../middleware/moderateur'); // ← remplace isAdmin
 const { createNotification } = require('../utils/notifications');
 
 const router = express.Router();
@@ -78,8 +78,8 @@ router.post('/signalements', authenticateToken, async (req, res) => {
   }
 });
 
-// Admin – Liste des signalements (groupés par cible)
-router.get('/admin/signalements', authenticateToken, isAdmin, async (req, res) => {
+// Modérateur/Admin – Liste des signalements (groupés par cible)
+router.get('/admin/signalements', authenticateToken, isModerateurOrAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -109,8 +109,8 @@ router.get('/admin/signalements', authenticateToken, isAdmin, async (req, res) =
   }
 });
 
-// Admin – Supprimer définitivement un contenu (service, demande, avis)
-router.delete('/admin/contenu/:type/:id', authenticateToken, isAdmin, async (req, res) => {
+// Modérateur/Admin – Supprimer définitivement un contenu (service, demande, avis)
+router.delete('/admin/contenu/:type/:id', authenticateToken, isModerateurOrAdmin, async (req, res) => {
   const { type, id } = req.params;
   let table;
   if (type === 'service') table = 'services';

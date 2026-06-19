@@ -1,21 +1,29 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:help_neighbor/app/dependances.dart';
+import 'package:help_neighbor/donnees/sources_donnees/locales/aide_preferences.dart';
 
 class ClientApi {
   late Dio _dio;
 
+  // Routes qui ne nécessitent pas d'authentification
+  static const List<String> _routesPubliques = [
+    '/auth/connexion',
+    '/auth/inscription',
+    '/auth/mot-de-passe-oublie',
+    '/auth/verification-otp',
+    '/auth/renouveler-mot-de-passe',
+  ];
+
   ClientApi() {
-    // Détection automatique de l'URL de base selon la plateforme
     final String baseUrl;
     if (kIsWeb) {
       baseUrl = 'http://localhost:3000/api';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      // Sur émulateur Android, 10.0.2.2 correspond à l'hôte local
       baseUrl = 'http://10.0.2.2:3000/api';
     } else {
-      // iOS, macOS, Windows, Linux
       baseUrl = 'http://localhost:3000/api';
     }
 
@@ -26,7 +34,6 @@ class ClientApi {
       headers: {'Content-Type': 'application/json'},
     ));
 
-    // Ajout du LogInterceptor pour voir toutes les requêtes et réponses
     _dio.interceptors.add(LogInterceptor(
       request: true,
       requestHeader: true,
@@ -37,19 +44,68 @@ class ClientApi {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await getIt<FlutterSecureStorage>().read(key: 'token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
+        final storage = getIt<FlutterSecureStorage>();
+        String? token = await storage.read(key: 'token');
+
+        // Si le token est absent, tenter de le récupérer depuis SharedPreferences
+        if (token == null) {
+          print('⚠️ Token absent dans SecureStorage pour ${options.path}');
+          final prefs = await SharedPreferences.getInstance();
+          token = prefs.getString('auth_token');
+          if (token != null) {
+            print('✅ Token récupéré depuis SharedPreferences, réécriture dans SecureStorage');
+            await storage.write(key: 'token', value: token);
+          } else {
+            print('❌ Aucun token trouvé ni dans SecureStorage ni dans SharedPreferences');
+          }
         }
+
+        // Vérifier si la route nécessite une authentification
+        final bool requiertAuth = _requiertAuth(options.path);
+
+        if (token == null && requiertAuth) {
+          // Token manquant pour une route protégée → rejeter la requête
+          print('🚫 Requête non authentifiée pour ${options.path} – token manquant');
+          return handler.reject(DioException(
+            requestOptions: options,
+            error: 'Non authentifié',
+            type: DioExceptionType.badResponse,
+          ));
+        }
+
+        if (token != null) {
+          final preview = token.length > 20 ? '${token.substring(0, 20)}...' : token;
+          print('🔑 Token utilisé pour ${options.path} : $preview');
+          options.headers['Authorization'] = 'Bearer $token';
+        } else {
+          print('🔑 Aucun token pour ${options.path} (route publique)');
+        }
+
         return handler.next(options);
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          // Gérer rafraîchissement token (optionnel)
+          // En cas de 401, on efface le token pour éviter des requêtes ultérieures avec un token invalide
+          print('⚠️ 401 sur ${error.requestOptions.path} – suppression du token');
+          await AidePreferences.effacerToken();
+          // On pourrait aussi déclencher une redirection globale, mais on laisse le caller gérer l'erreur
         }
         return handler.next(error);
       },
     ));
+  }
+
+  /// Vérifie si une route nécessite un token d'authentification.
+  bool _requiertAuth(String path) {
+    // Si le chemin commence par /auth/ mais n'est pas dans la liste publique, on considère qu'il est protégé
+    // (par exemple /auth/refresh-token pourrait être protégé, mais on met tout par sécurité)
+    // Pour simplifier, on considère que toute route qui n'est pas dans _routesPubliques est protégée.
+    for (final publique in _routesPubliques) {
+      if (path.startsWith(publique)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? query}) async {

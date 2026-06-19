@@ -1,3 +1,5 @@
+console.log('🟢 Chargement du fichier routes/auth.js');
+
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -6,36 +8,17 @@ const { JWT_SECRET } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/connexion', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const result = await pool.query(
-      'SELECT u.id, u.email, u.role, p.nom, p.prenom, u.mot_de_passe_hash FROM utilisateurs u LEFT JOIN profils p ON u.id = p.utilisateur_id WHERE u.email = $1',
-      [email]
-    );
-    if (result.rows.length === 0) return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
-    const user = result.rows[0];
-    const valid = await bcrypt.compare(password, user.mot_de_passe_hash);
-    if (!valid) return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({
-      token,
-      utilisateur: {
-        id: user.id,
-        email: user.email,
-        role: user.role ?? 'user',
-        nom: user.nom ?? '',
-        prenom: user.prenom ?? '',
-        note_moyenne: 0
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
+// Route d'inscription avec validation du mot de passe (longueur minimale 6)
 router.post('/inscription', async (req, res) => {
   const { email, password, nom, prenom } = req.body;
+
+  // Validation : longueur minimale 6 caractères (pas d'autre contrainte)
+  if (!password || password.length < 6) {
+    return res.status(400).json({
+      message: 'Le mot de passe doit contenir au moins 6 caractères.'
+    });
+  }
+
   const hashed = await bcrypt.hash(password, 10);
   const client = await pool.connect();
   try {
@@ -50,6 +33,7 @@ router.post('/inscription', async (req, res) => {
       [userId, nom, prenom]
     );
     await client.query('COMMIT');
+
     const token = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
     res.json({
       token,
@@ -64,9 +48,43 @@ router.post('/inscription', async (req, res) => {
     });
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error(err);
     res.status(500).json({ message: err.message });
   } finally {
     client.release();
+  }
+});
+
+// Route de connexion (inchangée)
+router.post('/connexion', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const result = await pool.query(
+      'SELECT u.id, u.email, u.role, p.nom, p.prenom, u.mot_de_passe_hash FROM utilisateurs u LEFT JOIN profils p ON u.id = p.utilisateur_id WHERE u.email = $1',
+      [email]
+    );
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+    }
+    const user = result.rows[0];
+    const valid = await bcrypt.compare(password, user.mot_de_passe_hash);
+    if (!valid) {
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+    }
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({
+      token,
+      utilisateur: {
+        id: user.id,
+        email: user.email,
+        role: user.role ?? 'user',
+        nom: user.nom ?? '',
+        prenom: user.prenom ?? '',
+        note_moyenne: 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

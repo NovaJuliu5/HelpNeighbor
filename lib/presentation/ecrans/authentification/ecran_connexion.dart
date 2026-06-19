@@ -17,6 +17,14 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _navigated = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +33,13 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
       if (next.erreur != null) {
         context.showSnackBar(next.erreur!.message, isError: true);
       }
-      if (next.utilisateur != null) {
-        context.go('/accueil');
+      if (next.utilisateur != null && !_navigated) {
+        _navigated = true;
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) {
+            context.go('/accueil');
+          }
+        });
       }
     });
 

@@ -92,15 +92,18 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     }
   }
 
-  Future<void> _repondreOffre(String offreId, String statut) async {
-    final depot = getIt<DepotOffre>();
-    final result = await depot.repondreOffre(offreId, statut);
+  // Nouvelle méthode pour contacter un prestataire
+  Future<void> _contacterPrestataire(String prestataireId) async {
+    // Trouver le nom du prestataire pour l'extra
+    final offre = _offres.firstWhere((o) => o.prestataireId == prestataireId);
+    final depotConv = getIt<DepotConversation>();
+    final result = await depotConv.creerConversation(
+      prestataireId,
+      demandeId: widget.id,
+    );
     result.fold(
           (echec) => context.showSnackBar(echec.message, isError: true),
-          (_) {
-        context.showSnackBar(statut == 'acceptee' ? 'Offre acceptée' : 'Offre refusée');
-        _chargerDonnees();
-      },
+          (convId) => context.push('/discussion/$convId', extra: {'autreNom': offre.prestataireNom}),
     );
   }
 
@@ -176,6 +179,7 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                   child: const Text('Contacter le demandeur'),
                 ),
               ],
+              // Section des offres reçues (uniquement pour le propriétaire)
               if (isOwner && _offres.isNotEmpty) ...[
                 const Text('Offres reçues:',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -184,21 +188,11 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                   child: ListTile(
                     title: Text(offre.prestataireNom),
                     subtitle: Text(offre.message),
-                    trailing: offre.statut == 'en_attente'
-                        ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.check, color: Colors.green),
-                          onPressed: () => _repondreOffre(offre.id, 'acceptee'),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () => _repondreOffre(offre.id, 'refusee'),
-                        ),
-                      ],
-                    )
-                        : Chip(label: Text(offre.statut)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.message),
+                      onPressed: () => _contacterPrestataire(offre.prestataireId),
+                      tooltip: 'Contacter',
+                    ),
                   ),
                 )),
               ],
