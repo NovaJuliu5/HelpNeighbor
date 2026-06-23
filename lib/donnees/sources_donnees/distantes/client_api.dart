@@ -15,6 +15,7 @@ class ClientApi {
     '/auth/mot-de-passe-oublie',
     '/auth/verification-otp',
     '/auth/renouveler-mot-de-passe',
+    '/auth/reinitialiser-mot-de-passe', // ✅ AJOUTÉE
   ];
 
   ClientApi() {

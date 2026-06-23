@@ -4,15 +4,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:help_neighbor/app/routes.dart';
 import 'package:help_neighbor/coeur/themes/theme_app.dart';
 import 'package:help_neighbor/presentation/fournisseurs/fournisseur_theme.dart';
-import 'package:help_neighbor/app/routes.dart';
-
 
 class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
+  final String? initialLink;
+  const MyApp({super.key, this.initialLink});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+
+    // Créer le routeur une fois avec le lien initial
+    final router = createRouter(initialLink: initialLink);
+
+    // 🔍 Log pour le débogage
+    print('📱 MyApp: initialLink=$initialLink, router config créé');
+
     return MaterialApp.router(
       title: 'Help Neighbor',
       debugShowCheckedModeBanner: false,

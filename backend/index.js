@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const pool = require('./config/db');
@@ -30,5 +31,10 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', signalementsRoutes); // pour /signalements et /admin/signalements
 
-const PORT = 3000;
-app.listen(PORT, () => console.log(`Backend démarré sur http://localhost:${PORT}`));
+// Utiliser le port défini dans .env ou 3000 par défaut
+const PORT = process.env.PORT || 3000;
+
+// Écouter sur toutes les interfaces pour être accessible depuis l'émulateur
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Backend démarré sur http://localhost:${PORT} (accessible via 10.0.2.2 depuis l'émulateur)`);
+});

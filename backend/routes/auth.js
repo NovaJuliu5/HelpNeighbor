@@ -3,8 +3,8 @@ console.log('🟢 Chargement du fichier routes/auth.js');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');          // Pour générer le token de réinitialisation
-const nodemailer = require('nodemailer');  // Pour l'envoi d'email
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const pool = require('../config/db');
 const { JWT_SECRET } = require('../middleware/auth');
 
@@ -94,7 +94,7 @@ router.post('/connexion', async (req, res) => {
 });
 
 // ============================================================
-// Demande de réinitialisation du mot de passe (envoi d'email)
+// Demande de réinitialisation (UN SEUL LIEN HTTP)
 // ============================================================
 router.post('/mot-de-passe-oublie', async (req, res) => {
   const { email } = req.body;
@@ -128,7 +128,7 @@ router.post('/mot-de-passe-oublie', async (req, res) => {
       [userId, token, expiresAt]
     );
 
-    // Envoi de l'email
+    // === Configuration du transporteur Nodemailer ===
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
@@ -139,8 +139,10 @@ router.post('/mot-de-passe-oublie', async (req, res) => {
       },
     });
 
-    const resetLink = `${process.env.FRONTEND_URL}/reinitialiser-mot-de-passe?token=${token}`;
+    // ✅ UN SEUL LIEN : HTTP (redirige vers helpneighbor://)
+    const resetLink = `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/api/auth/reinitialiser?token=${token}`;
 
+    // Envoi de l'email
     await transporter.sendMail({
       from: '"Help Neighbor" <no-reply@helpneighbor.com>',
       to: email,
@@ -154,6 +156,8 @@ router.post('/mot-de-passe-oublie', async (req, res) => {
       `,
     });
 
+    console.log('📧 Lien envoyé :', resetLink);
+
     res.status(200).json({ message: 'Email envoyé avec succès' });
   } catch (error) {
     console.error('Erreur demande réinitialisation:', error);
@@ -165,7 +169,19 @@ router.post('/mot-de-passe-oublie', async (req, res) => {
 });
 
 // ============================================================
-// RÉINITIALISATION EFFECTIVE DU MOT DE PASSE (avec token)
+// Redirection HTTP vers le lien profond (pour le lien de secours)
+// ============================================================
+router.get('/reinitialiser', (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).send('Token manquant');
+  }
+  // Redirige vers le schéma personnalisé pour ouvrir l'application
+  res.redirect(`helpneighbor://reinitialiser?token=${token}`);
+});
+
+// ============================================================
+// Réinitialisation effective du mot de passe (avec token)
 // ============================================================
 router.post('/reinitialiser-mot-de-passe', async (req, res) => {
   const { token, nouveauMotDePasse } = req.body;

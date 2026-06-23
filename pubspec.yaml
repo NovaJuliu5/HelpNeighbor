@@ -25,7 +25,8 @@ dependencies:
   equatable: ^2.0.5
   dartz: ^0.10.1
   get_it: ^7.6.4
-  uuid: ^4.0.0   # <-- AJOUTÉ
+  uuid: ^4.0.0
+  app_links: ^3.0.0   #Ajouté pour la gestion des liens profonds
 
 dev_dependencies:
   flutter_test:
