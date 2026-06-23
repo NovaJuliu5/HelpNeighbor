@@ -78,6 +78,11 @@ class _EcranConnexionState extends ConsumerState<EcranConnexion> {
                   }
                 },
               ),
+              // ===== NOUVEAU LIEN "Mot de passe oublié ?" =====
+              TextButton(
+                onPressed: () => context.push('/mot-de-passe-oublie'),
+                child: const Text('Mot de passe oublié ?'),
+              ),
               TextButton(
                 onPressed: () => context.push('/inscription'),
                 child: const Text('Créer un compte'),

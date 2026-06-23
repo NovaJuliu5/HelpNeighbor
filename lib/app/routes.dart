@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 import 'package:help_neighbor/presentation/ecrans/authentification/ecran_connexion.dart';
 import 'package:help_neighbor/presentation/ecrans/authentification/ecran_inscription.dart';
+import 'package:help_neighbor/presentation/ecrans/authentification/ecran_mot_de_passe_oublie.dart';
+import 'package:help_neighbor/presentation/ecrans/authentification/ecran_reinitialiser_mot_de_passe.dart';
 import 'package:help_neighbor/presentation/ecrans/accueil/ecran_accueil.dart';
 import 'package:help_neighbor/presentation/ecrans/service/ecran_detail_service.dart';
 import 'package:help_neighbor/presentation/ecrans/demande/ecran_detail_demande.dart';
@@ -20,14 +22,61 @@ import 'package:help_neighbor/presentation/ecrans/admin/ecran_signalements.dart'
 final router = GoRouter(
   initialLocation: '/connexion',
   routes: [
+    // Authentification
     GoRoute(path: '/connexion', name: 'connexion', builder: (context, state) => const EcranConnexion()),
     GoRoute(path: '/inscription', name: 'inscription', builder: (context, state) => const EcranInscription()),
+    GoRoute(path: '/mot-de-passe-oublie', name: 'motDePasseOublie', builder: (context, state) => const EcranMotDePasseOublie()),
+    GoRoute(
+      path: '/reinitialiser-mot-de-passe',
+      name: 'reinitialiserMotDePasse',
+      builder: (context, state) {
+        final token = state.uri.queryParameters['token'] ?? '';
+        return EcranReinitialiserMotDePasse(token: token);
+      },
+    ),
+
+    // Accueil
     GoRoute(path: '/accueil', name: 'accueil', builder: (context, state) => const EcranAccueil()),
-    GoRoute(path: '/service/:id', name: 'service_detail', builder: (context, state) => EcranDetailService(id: state.pathParameters['id']!)),
-    GoRoute(path: '/demande/:id', name: 'demande_detail', builder: (context, state) => EcranDetailDemande(id: state.pathParameters['id']!)),
+
+    // Services
+    GoRoute(
+      path: '/service/:id',
+      name: 'service_detail',
+      builder: (context, state) => EcranDetailService(id: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/creer-service',
+      name: 'creer_service',
+      builder: (context, state) => const EcranCreerService(),
+    ),
+
+    // Demandes
+    GoRoute(
+      path: '/demande/:id',
+      name: 'demande_detail',
+      builder: (context, state) => EcranDetailDemande(id: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/creer-demande',
+      name: 'creer_demande',
+      builder: (context, state) => const EcranCreerDemande(),
+    ),
+    GoRoute(
+      path: '/modifier-demande',
+      name: 'modifier_demande',
+      builder: (context, state) {
+        final demande = state.extra as EntiteDemande;
+        return EcranModifierDemande(demande: demande);
+      },
+    ),
+
+    // Explorer
     GoRoute(path: '/explorer', name: 'explorer', builder: (context, state) => const EcranExplorer()),
-    GoRoute(path: '/creer-demande', name: 'creer_demande', builder: (context, state) => const EcranCreerDemande()),
+
+    // Notifications
     GoRoute(path: '/notifications', name: 'notifications', builder: (context, state) => const EcranNotifications()),
+
+    // Discussions
     GoRoute(path: '/discussions', name: 'discussions', builder: (context, state) => const EcranListeDiscussions()),
     GoRoute(
       path: '/discussion/:id',
@@ -39,24 +88,22 @@ final router = GoRouter(
         return EcranDetailDiscussion(conversationId: id, autreNom: autreNom);
       },
     ),
+
+    // Profil
     // Route statique (plus spécifique) d'abord
-    GoRoute(path: '/profil/modifier', name: 'modifier_profil', builder: (context, state) => const EcranModifierProfil()),
+    GoRoute(
+      path: '/profil/modifier',
+      name: 'modifier_profil',
+      builder: (context, state) => const EcranModifierProfil(),
+    ),
     // Route dynamique ensuite
-    GoRoute(path: '/profil/:id', name: 'profil', builder: (context, state) => EcranProfil(userId: state.pathParameters['id']!)),
     GoRoute(
-      path: '/modifier-demande',
-      name: 'modifier_demande',
-      builder: (context, state) {
-        final demande = state.extra as EntiteDemande;
-        return EcranModifierDemande(demande: demande);
-      },
+      path: '/profil/:id',
+      name: 'profil',
+      builder: (context, state) => EcranProfil(userId: state.pathParameters['id']!),
     ),
-    GoRoute(
-      path: '/creer-service',
-      name: 'creer_service',
-      builder: (context, state) => const EcranCreerService(),
-    ),
-    // Routes admin
+
+    // Admin
     GoRoute(
       path: '/admin/utilisateurs',
       name: 'admin_utilisateurs',
