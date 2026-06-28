@@ -49,7 +49,7 @@ router.post('/signalements', authenticateToken, async (req, res) => {
           [
             admin.id,
             'signalement_seuil_atteint',
-            '⚠️ Contenu signalé plusieurs fois',
+            ' Contenu signalé plusieurs fois',
             `Le ${cible_type} (${cible_id}) a reçu ${nb} signalements.`,
             JSON.stringify({ cible_type, cible_id, nb }),
             `/admin/signalements?type=${cible_type}&id=${cible_id}`

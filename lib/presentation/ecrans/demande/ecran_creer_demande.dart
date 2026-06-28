@@ -36,21 +36,34 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Publier une demande')),
+      appBar: AppBar(
+        title: const Text('Publier une demande'),
+        backgroundColor: Colors.white,
+        foregroundColor: primaryColor,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: _titreController,
-              decoration: const InputDecoration(labelText: 'TITRE', hintText: 'ex: Aide pour réparer une fuite d\'eau'),
+              decoration: const InputDecoration(
+                labelText: 'TITRE',
+                hintText: 'ex: Aide pour réparer une fuite d\'eau',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'DESCRIPTION', hintText: 'Décrivez votre besoin en détail...'),
+              decoration: const InputDecoration(
+                labelText: 'DESCRIPTION',
+                hintText: 'Décrivez votre besoin en détail...',
+              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -69,7 +82,9 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _remuneration,
-              items: ['Gratuit / Échange', 'Montant en Ar'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+              items: ['Gratuit / Échange', 'Montant en Ar']
+                  .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                  .toList(),
               onChanged: (val) => setState(() => _remuneration = val!),
               decoration: const InputDecoration(labelText: 'RÉMUNÉRATION'),
             ),
@@ -77,7 +92,10 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
               const SizedBox(height: 12),
               TextField(
                 controller: _prixController,
-                decoration: const InputDecoration(labelText: 'Prix (Ar)', hintText: 'ex: 5000'),
+                decoration: const InputDecoration(
+                  labelText: 'Prix (Ar)',
+                  hintText: 'ex: 5000',
+                ),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -86,11 +104,22 @@ class _EcranCreerDemandeState extends ConsumerState<EcranCreerDemande> {
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
               onPressed: _publier,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
               child: const Text('Publier ma demande'),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => context.push('/creer-service'),
+              style: TextButton.styleFrom(
+                foregroundColor: primaryColor,
+              ),
               child: const Text('Vous voulez proposer un service ?'),
             ),
           ],

@@ -12,20 +12,21 @@ class EcranAccueil extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final userId = authState.utilisateur?.id;
+    final primaryColor = Theme.of(context).primaryColor; // Vert du thème
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        title: const Text(
+        backgroundColor: Colors.white,
+        title: Text(
           'Help Neighbor',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+          style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
         ),
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Color(0xFF2E7D32)),
+            icon: Icon(Icons.notifications_none, color: primaryColor),
             onPressed: () => context.push('/notifications'),
           ),
         ],
@@ -38,29 +39,30 @@ class EcranAccueil extends ConsumerWidget {
   }
 
   Widget _buildNonConnecte(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.handshake, size: 80, color: Color(0xFF2E7D32)),
+            Icon(Icons.handshake, size: 80, color: primaryColor),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Bienvenue !',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor),
             ),
             const SizedBox(height: 12),
             const Text(
               'Rejoignez la communauté d’entraide de votre quartier.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16, color: Colors.black87),
             ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () => context.push('/connexion'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
+                backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -70,7 +72,7 @@ class EcranAccueil extends ConsumerWidget {
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => context.push('/inscription'),
-              child: const Text('Créer un compte', style: TextStyle(color: Color(0xFF2E7D32))),
+              child: Text('Créer un compte', style: TextStyle(color: primaryColor)),
             ),
           ],
         ),
@@ -79,6 +81,7 @@ class EcranAccueil extends ConsumerWidget {
   }
 
   Widget _buildConnecte(BuildContext context, WidgetRef ref, String userId) {
+    final primaryColor = Theme.of(context).primaryColor;
     final profilAsync = ref.watch(profilUtilisateurProvider(userId));
     final prenom = profilAsync.when(
       data: (user) => user.prenom ?? 'Voisin',
@@ -91,26 +94,30 @@ class EcranAccueil extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Carte de bienvenue (originale)
+          // Carte de bienvenue (dégradé de vert)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
+              gradient: LinearGradient(
+                colors: [primaryColor, primaryColor.withOpacity(0.6)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
-                BoxShadow(color: Colors.green.shade200, blurRadius: 10, offset: const Offset(0, 5)),
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Salut $prenom 👋',
+                  'Salut $prenom ',
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
@@ -123,7 +130,7 @@ class EcranAccueil extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          // Deux actions principales (grandes cartes)
+          // Deux actions principales
           Row(
             children: [
               _ActionTile(
@@ -136,17 +143,17 @@ class EcranAccueil extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.favorite_outline,
                 label: 'Je veux aider\nmes voisins',
-                color: const Color(0xFF2E7D32),
+                color: primaryColor,
                 onTap: () => context.push('/creer-service'),
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Section "Idées du moment" (catégories originales)
+          // Section "Idées du moment"
           const Text(
-            '💡 Idées du moment',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ' Idées du moment',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -163,7 +170,7 @@ class EcranAccueil extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          // Petit rappel statistique (simple, sans tableau)
+          // Petit rappel statistique
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -194,7 +201,7 @@ class EcranAccueil extends ConsumerWidget {
                 ),
                 Container(height: 30, width: 1, color: Colors.grey.shade300),
                 _MiniStat(
-                  count: 0, // à remplacer par vrai compteur de conversations
+                  count: 0,
                   label: 'messages',
                 ),
               ],
@@ -207,7 +214,6 @@ class EcranAccueil extends ConsumerWidget {
   }
 }
 
-// Carte d'action (grande)
 class _ActionTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -245,7 +251,6 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-// Puce "Idée du moment"
 class _IdeaChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -253,18 +258,18 @@ class _IdeaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
     return ActionChip(
-      label: Text(label),
-      avatar: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(color: Colors.black87)),
+      avatar: Icon(icon, size: 16, color: primaryColor),
       onPressed: () => context.push('/explorer', extra: {'categorie': label}),
-      side: BorderSide.none,
-      backgroundColor: Colors.grey.shade100,
+      side: BorderSide(color: Colors.grey.shade300, width: 1),
+      backgroundColor: Colors.grey.shade50,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
     );
   }
 }
 
-// Mini statistique
 class _MiniStat extends StatelessWidget {
   final int count;
   final String label;
@@ -276,7 +281,7 @@ class _MiniStat extends StatelessWidget {
       children: [
         Text(
           count.toString(),
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
         ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],

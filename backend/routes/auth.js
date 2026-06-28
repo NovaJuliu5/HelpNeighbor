@@ -1,4 +1,4 @@
-console.log('🟢 Chargement du fichier routes/auth.js');
+console.log(' Chargement du fichier routes/auth.js');
 
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -139,7 +139,7 @@ router.post('/mot-de-passe-oublie', async (req, res) => {
       },
     });
 
-    // ✅ UN SEUL LIEN : HTTP (redirige vers helpneighbor://)
+    //  UN SEUL LIEN : HTTP (redirige vers helpneighbor://)
     const resetLink = `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/api/auth/reinitialiser?token=${token}`;
 
     // Envoi de l'email
@@ -156,7 +156,7 @@ router.post('/mot-de-passe-oublie', async (req, res) => {
       `,
     });
 
-    console.log('📧 Lien envoyé :', resetLink);
+    console.log(' Lien envoyé :', resetLink);
 
     res.status(200).json({ message: 'Email envoyé avec succès' });
   } catch (error) {
@@ -223,7 +223,7 @@ router.post('/reinitialiser-mot-de-passe', async (req, res) => {
 
     res.status(200).json({ message: 'Mot de passe réinitialisé avec succès' });
   } catch (error) {
-    console.error('❌ Erreur réinitialisation mot de passe:', error);
+    console.error(' Erreur réinitialisation mot de passe:', error);
     const message = process.env.NODE_ENV === 'development'
       ? error.message
       : 'Erreur serveur';

@@ -11,12 +11,10 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
 
-    // Créer le routeur une fois avec le lien initial
     final router = createRouter(initialLink: initialLink);
 
-    // 🔍 Log pour le débogage
+    // Log pour le débogage
     print('📱 MyApp: initialLink=$initialLink, router config créé');
 
     return MaterialApp.router(
@@ -24,7 +22,7 @@ class MyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeApp.themeClair,
       darkTheme: ThemeApp.themeSombre,
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       routerConfig: router,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

@@ -55,22 +55,22 @@ class _EcranModifierProfilState extends ConsumerState<EcranModifierProfil> {
     final authState = ref.read(authProvider);
     final userId = authState.utilisateur?.id;
 
-    print('🔍 _loadUserId: userId = $userId');
+    print(' _loadUserId: userId = $userId');
 
     if (userId == null) {
-      print('❌ Aucun utilisateur connecté');
+      print(' Aucun utilisateur connecté');
       _redirectToLogin(message: 'Utilisateur non connecté');
       return;
     }
 
     if (userId == "modifier" || !_isValidUuid(userId)) {
-      print('❌ ID invalide détecté : $userId → déconnexion et redirection');
+      print(' ID invalide détecté : $userId → déconnexion et redirection');
       ref.read(authProvider.notifier).deconnexion();
       _redirectToLogin(message: 'Session invalide, veuillez vous reconnecter.');
       return;
     }
 
-    print('✅ ID utilisateur valide : $userId');
+    print(' ID utilisateur valide : $userId');
     _userId = userId;
     await _chargerProfil(userId);
   }
@@ -96,7 +96,7 @@ class _EcranModifierProfilState extends ConsumerState<EcranModifierProfil> {
       _paysController.text = utilisateur.pays ?? 'Madagascar';
       if (mounted) setState(() => _isLoading = false);
     } catch (e) {
-      print('❌ Exception dans _chargerProfil: $e');
+      print(' Exception dans _chargerProfil: $e');
       _redirectToLogin(message: 'Erreur chargement profil : veuillez vous reconnecter.');
     }
   }

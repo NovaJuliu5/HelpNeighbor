@@ -53,11 +53,11 @@ router.delete('/utilisateurs/:id', authenticateToken, isModerateurOrAdmin, valid
   const { id } = req.params;
   const userId = req.user.id;
 
-  console.log(`🗑️ Demande de suppression de l'utilisateur ${id} par ${userId}`);
+  console.log(` Demande de suppression de l'utilisateur ${id} par ${userId}`);
 
   // Empêcher l'auto-suppression
   if (id === userId) {
-    console.log('❌ Tentative d\'auto-suppression');
+    console.log(' Tentative d\'auto-suppression');
     return res.status(400).json({ message: 'Vous ne pouvez pas vous supprimer vous-même.' });
   }
 
@@ -65,13 +65,13 @@ router.delete('/utilisateurs/:id', authenticateToken, isModerateurOrAdmin, valid
     // Vérifier que l'utilisateur existe et récupérer son rôle
     const check = await pool.query('SELECT id, role FROM utilisateurs WHERE id = $1', [id]);
     if (check.rows.length === 0) {
-      console.log(`❌ Utilisateur ${id} non trouvé`);
+      console.log(` Utilisateur ${id} non trouvé`);
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
     // Interdire la suppression d'un admin
     if (check.rows[0].role === 'admin') {
-      console.log(`❌ Tentative de suppression d'un admin (${id})`);
+      console.log(` Tentative de suppression d'un admin (${id})`);
       return res.status(403).json({ message: 'Impossible de supprimer un administrateur.' });
     }
 
@@ -81,14 +81,14 @@ router.delete('/utilisateurs/:id', authenticateToken, isModerateurOrAdmin, valid
       [id]
     );
     if (updateResult.rows.length === 0) {
-      console.log(`❌ Échec de la mise à jour pour ${id}`);
+      console.log(` Échec de la mise à jour pour ${id}`);
       return res.status(500).json({ message: 'Erreur lors de la suppression' });
     }
 
-    console.log(`✅ Utilisateur ${id} désactivé (soft delete)`);
+    console.log(` Utilisateur ${id} désactivé (soft delete)`);
     res.json({ message: 'Utilisateur désactivé avec succès' });
   } catch (err) {
-    console.error(`❌ Erreur lors de la suppression de ${id}:`, err);
+    console.error(` Erreur lors de la suppression de ${id}:`, err);
     res.status(500).json({ message: err.message });
   }
 });

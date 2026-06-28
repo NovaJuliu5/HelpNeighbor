@@ -66,64 +66,130 @@ class CarteService extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final primaryColor = Theme.of(context).primaryColor;
     final adresse = (service.adresse?.isNotEmpty == true) ? service.adresse! : 'Adresse non renseignée';
+    final prix = service.prix ?? 0;
+    final note = service.noteMoyenne ?? 0;
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
-        leading: GestureDetector(
-          onTap: () => _voirProfil(context),
-          behavior: HitTestBehavior.opaque,
-          child: CircleAvatar(
-            backgroundImage: (service.photoUrl != null && service.photoUrl!.isNotEmpty)
-                ? NetworkImage(service.photoUrl!)
-                : null,
-            child: (service.photoUrl == null || service.photoUrl!.isEmpty)
-                ? Text(service.utilisateurNom[0])
-                : null,
-          ),
-        ),
-        title: Text(service.titre),
-        subtitle: Column(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(service.utilisateurNom),
+            // Ligne principale : avatar + titre + icônes d'action
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                EtoilesEvaluation(note: service.noteMoyenne, taille: 14),
-                const SizedBox(width: 4),
-                Text(service.noteMoyenne.toStringAsFixed(1)), // nombre d'avis supprimé
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    adresse,
-                    style: const TextStyle(fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+                // Avatar cliquable pour voir le profil
+                GestureDetector(
+                  onTap: () => _voirProfil(context),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundImage: (service.photoUrl != null && service.photoUrl!.isNotEmpty)
+                        ? NetworkImage(service.photoUrl!)
+                        : null,
+                    child: (service.photoUrl == null || service.photoUrl!.isEmpty)
+                        ? Text(service.utilisateurNom.isNotEmpty ? service.utilisateurNom[0] : '?',
+                        style: const TextStyle(fontSize: 20))
+                        : null,
                   ),
+                ),
+                const SizedBox(width: 12),
+                // Informations du service
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.titre,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'par ${service.utilisateurNom}',
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          EtoilesEvaluation(note: note, taille: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            note.toStringAsFixed(1),
+                            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              adresse,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Boutons d'action (signaler, contacter) en colonne
+                Column(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.flag_outlined, size: 22),
+                      color: Colors.grey.shade600,
+                      onPressed: () => _signaler(context, ref),
+                      tooltip: 'Signaler',
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.message, size: 22),
+                      color: primaryColor,
+                      onPressed: () => _contacter(context, ref),
+                      tooltip: 'Contacter',
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ),
               ],
             ),
-            Text(service.categorie, style: const TextStyle(fontSize: 12)),
-            Text('${service.prix} Ar/h', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            // Ligne des détails : catégorie + prix (distance supprimée)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.category, size: 16, color: primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      service.categorie ?? 'Sans catégorie',
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.attach_money, size: 16, color: primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$prix Ar',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ],
         ),
-        isThreeLine: true,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.flag_outlined, size: 20),
-              onPressed: () => _signaler(context, ref),
-              tooltip: 'Signaler',
-            ),
-            IconButton(
-              icon: const Icon(Icons.message),
-              onPressed: () => _contacter(context, ref),
-              tooltip: 'Contacter',
-            ),
-          ],
-        ),
-        onTap: () => context.push('/service/${service.id}'),
       ),
     );
   }

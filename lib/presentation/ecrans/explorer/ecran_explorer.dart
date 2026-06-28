@@ -69,10 +69,18 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
     final demandesAsync = ref.watch(demandesProchesProvider);
     final authState = ref.watch(authProvider);
     final userId = authState.utilisateur?.id;
+    final primaryColor = Theme.of(context).primaryColor;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Explorer'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Explorer',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        foregroundColor: primaryColor,
         actions: [
           if (userId != null)
             IconButton(
@@ -86,11 +94,12 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(160),
+          preferredSize: const Size.fromHeight(170),
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Column(
               children: [
+                // SegmentedButton personnalisé (vert)
                 SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment<bool>(
@@ -112,18 +121,48 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
                       _searchController.clear();
                     });
                   },
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return primaryColor;
+                        }
+                        return Colors.grey.shade100;
+                      },
+                    ),
+                    foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return Colors.white;
+                        }
+                        return primaryColor;
+                      },
+                    ),
+                    side: WidgetStateProperty.resolveWith<BorderSide>(
+                          (states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return BorderSide(color: primaryColor, width: 2);
+                        }
+                        return const BorderSide(color: Colors.transparent);
+                      },
+                    ),
+                    shape: WidgetStateProperty.all(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                // Barre de recherche
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: _showServices
                         ? 'Rechercher un service...'
                         : 'Rechercher une demande...',
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: Icon(Icons.search, color: primaryColor),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: Icon(Icons.clear, color: primaryColor),
                       onPressed: () {
                         _searchController.clear();
                         setState(() => _searchQuery = '');
@@ -132,11 +171,23 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
                         : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: primaryColor),
                     ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: primaryColor, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
                   ),
                   onChanged: (value) => setState(() => _searchQuery = value),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                // Filtres par catégorie (chips)
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
@@ -161,6 +212,17 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
                               }
                             });
                           },
+                          selectedColor: primaryColor,
+                          backgroundColor: Colors.grey.shade100,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.grey.shade700,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                          checkmarkColor: Colors.white,
+                          side: isSelected
+                              ? BorderSide(color: primaryColor, width: 2)
+                              : BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                       );
                     },
@@ -174,6 +236,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
       body: _showServices
           ? RefreshIndicator(
         onRefresh: _refresh,
+        color: primaryColor,
         child: servicesAsync.when(
           data: (services) {
             final filtered = _filterServices(services);
@@ -181,6 +244,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
               return const Center(child: Text('Aucun service trouvé'));
             }
             return ListView.builder(
+              padding: const EdgeInsets.only(top: 8),
               itemCount: filtered.length,
               itemBuilder: (context, index) =>
                   CarteService(service: filtered[index]),
@@ -192,6 +256,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
       )
           : RefreshIndicator(
         onRefresh: _refresh,
+        color: primaryColor,
         child: demandesAsync.when(
           data: (demandes) {
             final filtered = _filterDemandes(demandes);
@@ -199,6 +264,7 @@ class _EcranExplorerState extends ConsumerState<EcranExplorer> {
               return const Center(child: Text('Aucune demande trouvée'));
             }
             return ListView.builder(
+              padding: const EdgeInsets.only(top: 8),
               itemCount: filtered.length,
               itemBuilder: (context, index) =>
                   CarteDemande(demande: filtered[index]),

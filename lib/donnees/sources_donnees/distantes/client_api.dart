@@ -15,7 +15,7 @@ class ClientApi {
     '/auth/mot-de-passe-oublie',
     '/auth/verification-otp',
     '/auth/renouveler-mot-de-passe',
-    '/auth/reinitialiser-mot-de-passe', // ✅ AJOUTÉE
+    '/auth/reinitialiser-mot-de-passe',
   ];
 
   ClientApi() {
@@ -23,7 +23,7 @@ class ClientApi {
     if (kIsWeb) {
       baseUrl = 'http://localhost:3000/api';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      baseUrl = 'http://10.0.2.2:3000/api';
+      baseUrl = 'http://192.168.43.99:3000/api';
     } else {
       baseUrl = 'http://localhost:3000/api';
     }
@@ -50,14 +50,14 @@ class ClientApi {
 
         // Si le token est absent, tenter de le récupérer depuis SharedPreferences
         if (token == null) {
-          print('⚠️ Token absent dans SecureStorage pour ${options.path}');
+          print(' Token absent dans SecureStorage pour ${options.path}');
           final prefs = await SharedPreferences.getInstance();
           token = prefs.getString('auth_token');
           if (token != null) {
-            print('✅ Token récupéré depuis SharedPreferences, réécriture dans SecureStorage');
+            print('Token récupéré depuis SharedPreferences, réécriture dans SecureStorage');
             await storage.write(key: 'token', value: token);
           } else {
-            print('❌ Aucun token trouvé ni dans SecureStorage ni dans SharedPreferences');
+            print('Aucun token trouvé ni dans SecureStorage ni dans SharedPreferences');
           }
         }
 
@@ -66,7 +66,7 @@ class ClientApi {
 
         if (token == null && requiertAuth) {
           // Token manquant pour une route protégée → rejeter la requête
-          print('🚫 Requête non authentifiée pour ${options.path} – token manquant');
+          print('Requête non authentifiée pour ${options.path} – token manquant');
           return handler.reject(DioException(
             requestOptions: options,
             error: 'Non authentifié',
@@ -76,10 +76,10 @@ class ClientApi {
 
         if (token != null) {
           final preview = token.length > 20 ? '${token.substring(0, 20)}...' : token;
-          print('🔑 Token utilisé pour ${options.path} : $preview');
+          print('Token utilisé pour ${options.path} : $preview');
           options.headers['Authorization'] = 'Bearer $token';
         } else {
-          print('🔑 Aucun token pour ${options.path} (route publique)');
+          print('Aucun token pour ${options.path} (route publique)');
         }
 
         return handler.next(options);
@@ -87,7 +87,7 @@ class ClientApi {
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
           // En cas de 401, on efface le token pour éviter des requêtes ultérieures avec un token invalide
-          print('⚠️ 401 sur ${error.requestOptions.path} – suppression du token');
+          print('401 sur ${error.requestOptions.path} – suppression du token');
           await AidePreferences.effacerToken();
           // On pourrait aussi déclencher une redirection globale, mais on laisse le caller gérer l'erreur
         }

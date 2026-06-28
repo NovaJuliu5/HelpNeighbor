@@ -58,7 +58,7 @@ class DepotAuthentification {
       if (response.statusCode == 200) {
         return const Right(true);
       } else {
-        // ✅ Correction : utiliser EchecServeur au lieu de Echec
+        //  Correction : utiliser EchecServeur au lieu de Echec
         return Left(EchecServeur('Erreur serveur (${response.statusCode})'));
       }
     } catch (e) {

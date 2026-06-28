@@ -14,7 +14,7 @@ class AidePreferences {
 
   static Future<void> effacerToken() async {
     // Tracage de l'appel
-    print('🗑️ [AidePreferences] effacerToken appelé');
+    print('[AidePreferences] effacerToken appelé');
     print(StackTrace.current); // ← affiche la pile d'appels
 
     final prefs = getIt<SharedPreferences>();

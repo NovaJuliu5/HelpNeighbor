@@ -92,9 +92,7 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     }
   }
 
-  // Nouvelle méthode pour contacter un prestataire
   Future<void> _contacterPrestataire(String prestataireId) async {
-    // Trouver le nom du prestataire pour l'extra
     final offre = _offres.firstWhere((o) => o.prestataireId == prestataireId);
     final depotConv = getIt<DepotConversation>();
     final result = await depotConv.creerConversation(
@@ -125,6 +123,8 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     final authState = ref.watch(authProvider);
     final isOwner = authState.utilisateur?.id == _demande?.utilisateurId;
     final isOpen = _demande?.statut == 'ouverte';
+    final primaryColor = Theme.of(context).primaryColor;
+
     EntiteOffre? offreAcceptee;
     for (var offre in _offres) {
       if (offre.statut == 'acceptee') {
@@ -136,6 +136,9 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Détail de la demande'),
+        backgroundColor: Colors.white,
+        foregroundColor: primaryColor,
+        elevation: 0,
         actions: [
           if (isOwner) ...[
             IconButton(
@@ -157,47 +160,169 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
           ? Center(child: Text('Erreur: $_error'))
           : RefreshIndicator(
         onRefresh: _chargerDonnees,
+        color: primaryColor,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_demande!.titre,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_demande!.description),
-              const SizedBox(height: 8),
-              Text('Statut: ${_demande!.statut}'),
-              const SizedBox(height: 8),
-              Text('Prix : ${_demande!.prix} Ar'),
-              const SizedBox(height: 16),
-              if (!isOwner && isOpen) ...[
-                _FormulaireOffre(demandeId: widget.id, onOffreEnvoyee: _chargerDonnees),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _contacterDemandeur,
-                  child: const Text('Contacter le demandeur'),
+              // --- Carte principale ---
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundImage: (_demande!.photoUrl != null &&
+                                _demande!.photoUrl!.isNotEmpty)
+                                ? NetworkImage(_demande!.photoUrl!)
+                                : null,
+                            child: (_demande!.photoUrl == null ||
+                                _demande!.photoUrl!.isEmpty)
+                                ? Text(_demande!.utilisateurNom?.substring(0, 1) ?? 'U',
+                                style: const TextStyle(fontSize: 24))
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _demande!.titre,
+                                  style: const TextStyle(
+                                      fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'par ${_demande!.utilisateurNom ?? 'Inconnu'}',
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      Text(
+                        _demande!.description,
+                        style: const TextStyle(height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      _InfoRow(
+                          icon: Icons.label, label: 'Statut', value: _demande!.statut),
+                      const SizedBox(height: 8),
+                      _InfoRow(
+                          icon: Icons.attach_money,
+                          label: 'Prix',
+                          value: '${_demande!.prix} Ar'),
+                    ],
+                  ),
                 ),
-              ],
-              // Section des offres reçues (uniquement pour le propriétaire)
-              if (isOwner && _offres.isNotEmpty) ...[
-                const Text('Offres reçues:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ..._offres.map((offre) => Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    title: Text(offre.prestataireNom),
-                    subtitle: Text(offre.message),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.message),
-                      onPressed: () => _contacterPrestataire(offre.prestataireId),
-                      tooltip: 'Contacter',
+              ),
+              const SizedBox(height: 24),
+
+              // --- Actions principales ---
+              if (!isOwner && isOpen) ...[
+                // Formulaire d'offre
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: _FormulaireOffre(
+                      demandeId: widget.id,
+                      onOffreEnvoyee: _chargerDonnees,
                     ),
                   ),
-                )),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _contacterDemandeur,
+                  icon: const Icon(Icons.message),
+                  label: const Text('Contacter le demandeur'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 24),
               ],
-              if (isOwner && offreAcceptee != null) ...[
+
+              // --- Offres reçues (propriétaire uniquement) ---
+              if (isOwner && _offres.isNotEmpty) ...[
+                const Text(
+                  'Offres reçues',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _offres.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, index) {
+                    final offre = _offres[index];
+                    return Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              radius: 20,
+                              child: Icon(Icons.person, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    offre.prestataireNom,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    offre.message,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.message),
+                              color: primaryColor,
+                              onPressed: () =>
+                                  _contacterPrestataire(offre.prestataireId),
+                              tooltip: 'Contacter',
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
+              ],
+
+              // --- Noter le prestataire (si offre acceptée) ---
+              if (isOwner && offreAcceptee != null) ...[
                 ElevatedButton.icon(
                   onPressed: () {
                     showDialog(
@@ -213,8 +338,13 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
                   label: const Text('Noter ce prestataire'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.amber[700],
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
+                const SizedBox(height: 24),
               ],
             ],
           ),
@@ -225,7 +355,7 @@ class _EcranDetailDemandeState extends ConsumerState<EcranDetailDemande> {
   }
 }
 
-// Formulaire d'offre inchangé
+// Formulaire d'offre amélioré (utilisé dans la carte)
 class _FormulaireOffre extends ConsumerStatefulWidget {
   final String demandeId;
   final VoidCallback onOffreEnvoyee;
@@ -240,24 +370,42 @@ class _FormulaireOffreState extends ConsumerState<_FormulaireOffre> {
   bool _isLoading = false;
 
   @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Faire une offre', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Faire une offre',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: _messageController,
           maxLines: 3,
           decoration: const InputDecoration(
-            hintText: 'Message...',
+            hintText: 'Votre message pour le demandeur...',
             border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _isLoading
-            ? const CircularProgressIndicator()
+            ? const Center(child: CircularProgressIndicator())
             : ElevatedButton(
           onPressed: _envoyerOffre,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 45),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
+          ),
           child: const Text('Envoyer l\'offre'),
         ),
       ],
@@ -265,7 +413,10 @@ class _FormulaireOffreState extends ConsumerState<_FormulaireOffre> {
   }
 
   Future<void> _envoyerOffre() async {
-    if (_messageController.text.trim().isEmpty) return;
+    if (_messageController.text.trim().isEmpty) {
+      context.showSnackBar('Veuillez saisir un message', isError: true);
+      return;
+    }
     setState(() => _isLoading = true);
     final authState = ref.read(authProvider);
     final prestataireId = authState.utilisateur?.id;
@@ -288,6 +439,36 @@ class _FormulaireOffreState extends ConsumerState<_FormulaireOffre> {
         _messageController.clear();
         widget.onOffreEnvoyee();
       },
+    );
+  }
+}
+
+// Widget utilitaire pour les lignes d'information (comme dans EcranDetailService)
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: primaryColor),
+        const SizedBox(width: 8),
+        Text(
+          '$label : ',
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(color: Colors.grey.shade700),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

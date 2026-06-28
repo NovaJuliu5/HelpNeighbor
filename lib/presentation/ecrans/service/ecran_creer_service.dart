@@ -23,7 +23,6 @@ class _EcranCreerServiceState extends ConsumerState<EcranCreerService> {
   bool _disponible = true;
   bool _isLoading = false;
 
-  // Liste des catégories (devrait venir du backend, mais pour l'instant statique)
   final List<Map<String, String>> _categories = [];
 
   @override
@@ -33,8 +32,6 @@ class _EcranCreerServiceState extends ConsumerState<EcranCreerService> {
   }
 
   Future<void> _chargerCategories() async {
-    // Idéalement, créer un endpoint GET /categories dans le backend
-    // Pour l'instant, on utilise une liste statique basée sur vos données existantes
     setState(() {
       _categories.addAll([
         {'id': '93d4b51d-1fd4-4976-8e58-6d7ed0c10a91', 'nom': 'Bricolage'},
@@ -50,8 +47,15 @@ class _EcranCreerServiceState extends ConsumerState<EcranCreerService> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Publier un service')),
+      appBar: AppBar(
+        title: const Text('Publier un service'),
+        backgroundColor: Colors.white,
+        foregroundColor: primaryColor,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -98,18 +102,27 @@ class _EcranCreerServiceState extends ConsumerState<EcranCreerService> {
               title: const Text('Service disponible'),
               value: _disponible,
               onChanged: (value) => setState(() => _disponible = value),
+              activeColor: primaryColor,
             ),
             const SizedBox(height: 24),
             _isLoading
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
               onPressed: _publier,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
               child: const Text('Publier mon service'),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 2), // onglet Publier
+      bottomNavigationBar: const BarreNavigationBasPersonnalisee(selectedIndex: 2),
     );
   }
 
@@ -146,7 +159,6 @@ class _EcranCreerServiceState extends ConsumerState<EcranCreerService> {
           (echec) => context.showSnackBar(echec.message, isError: true),
           (_) {
         context.showSnackBar('Service publié avec succès !');
-        // Rafraîchir les services dans l'accueil et l'explorateur
         ref.invalidate(servicesProchesProvider);
         context.go('/accueil');
       },

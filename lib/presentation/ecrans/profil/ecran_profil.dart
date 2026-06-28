@@ -111,31 +111,7 @@ class EcranProfil extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // Bouton Noter (si ce n'est pas son propre profil)
-              if (!isOwnProfile) ...[
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.star_rate),
-                  label: const Text('Noter cet utilisateur'),
-                  onPressed: () async {
-                    final result = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => DialogueNotation(
-                        titre: 'Noter ${utilisateur.prenom} ${utilisateur.nom}',
-                        cibleId: userId,
-                        cibleType: 'utilisateur',
-                      ),
-                    );
-                    if (result == true) {
-                      ref.invalidate(profilUtilisateurProvider(userId));
-                      ref.invalidate(avisUtilisateurProvider(userId));
-                      if (context.mounted) {
-                        context.showSnackBar('Avis envoyé, merci !');
-                      }
-                    }
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
+              // Bouton "Noter cet utilisateur" SUPPRIMÉ
 
               // Liste des avis
               const Text('Avis des membres', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -165,7 +141,7 @@ class EcranProfil extends ConsumerWidget {
                                 ...List.generate(5, (star) => Icon(
                                   star < a.noteGlobale.round() ? Icons.star : Icons.star_border,
                                   size: 16,
-                                  color: Colors.orange,
+                                  color: Colors.green, // 🟢 Changé en vert
                                 )),
                                 const SizedBox(width: 8),
                                 Text('${a.noteGlobale.toStringAsFixed(1)}/5'),
@@ -191,11 +167,11 @@ class EcranProfil extends ConsumerWidget {
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: isAdmin ? Colors.blue.shade50 : Colors.green.shade50,
+                  color: Colors.green.shade50, // 🟢 Changé en vert
                   child: ListTile(
                     leading: Icon(
                       isAdmin ? Icons.admin_panel_settings : Icons.shield,
-                      color: isAdmin ? Colors.blue : Colors.green,
+                      color: Colors.green, // 🟢 Changé en vert
                     ),
                     title: Text(
                       isAdmin ? 'Gestion des utilisateurs' : 'Modération - Utilisateurs',
@@ -240,7 +216,7 @@ class EcranProfil extends ConsumerWidget {
       // Invalider l'état d'authentification pour que les widgets réagissent
       ref.invalidate(authProvider);
 
-      // ❌ NE PAS invalider profilUtilisateurProvider(userId)
+      //  NE PAS invalider profilUtilisateurProvider(userId)
       // Cela éviterait de relancer une requête après suppression du token
 
       // Rediriger vers l'écran de connexion

@@ -32,7 +32,7 @@ router.get('/proches', authenticateToken, async (req, res) => {
     GROUP BY s.id, c.nom, p.nom, p.prenom, sp.prix_fixe, p.photo_url, sl.adresse_service, a.adresse, a.ville
     LIMIT 20
   `);
-  console.log("🔍 [GET /services/proches] Services retournés :",
+  console.log(" [GET /services/proches] Services retournés :",
     result.rows.map(r => ({ id: r.id, titre: r.titre, adresse: r.adresse }))
   );
   res.json(result.rows);
@@ -69,7 +69,7 @@ router.get('/recherche', authenticateToken, async (req, res) => {
      LEFT JOIN adresses a ON s.utilisateur_id = a.utilisateur_id AND a.est_principale = true
      WHERE (s.titre ILIKE $1 OR s.description ILIKE $1) AND s.disponible = true
   `, [`%${q}%`]);
-  console.log("🔍 [GET /services/recherche] Services trouvés :",
+  console.log(" [GET /services/recherche] Services trouvés :",
     result.rows.map(r => ({ id: r.id, titre: r.titre, adresse: r.adresse }))
   );
   res.json(result.rows);

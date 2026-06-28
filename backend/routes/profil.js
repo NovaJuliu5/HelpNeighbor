@@ -1,19 +1,19 @@
-console.log('🟢 Chargement du fichier routes/profil.js');
+console.log(' Chargement du fichier routes/profil.js');
 
 const express = require('express');
 const pool = require('../config/db');
 const { authenticateToken } = require('../middleware/auth');
 const { validateUuidParam } = require('../middleware/uuid');
 
-console.log('🟢 validateUuidParam importé :', typeof validateUuidParam);
+console.log(' validateUuidParam importé :', typeof validateUuidParam);
 
 const router = express.Router();
-console.log('🟢 Routeur créé');
+console.log(' Routeur créé');
 
 // GET /api/utilisateurs/:id
-console.log('🟢 Définition de la route GET /:id');
+console.log(' Définition de la route GET /:id');
 router.get('/:id', authenticateToken, validateUuidParam('id'), async (req, res) => {
-  console.log(`📥 GET /utilisateurs/${req.params.id} reçu`);
+  console.log(` GET /utilisateurs/${req.params.id} reçu`);
   const { id } = req.params;
   try {
     const result = await pool.query(`
@@ -31,10 +31,10 @@ router.get('/:id', authenticateToken, validateUuidParam('id'), async (req, res) 
     `, [id]);
     const row = result.rows[0];
     if (!row) {
-      console.log(`❌ Utilisateur ${id} non trouvé`);
+      console.log(` Utilisateur ${id} non trouvé`);
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
-    console.log(`✅ Utilisateur ${id} trouvé`);
+    console.log(` Utilisateur ${id} trouvé`);
     res.json({
       id: row.id,
       email: row.email,
@@ -52,15 +52,15 @@ router.get('/:id', authenticateToken, validateUuidParam('id'), async (req, res) 
       note_moyenne: parseFloat(row.note_moyenne) || 0
     });
   } catch (err) {
-    console.error(`❌ Erreur GET /utilisateurs/${id}:`, err);
+    console.error(` Erreur GET /utilisateurs/${id}:`, err);
     res.status(500).json({ message: err.message });
   }
 });
 
 // PUT /api/utilisateurs/profil
-console.log('🟢 Définition de la route PUT /profil');
+console.log(' Définition de la route PUT /profil');
 router.put('/profil', authenticateToken, async (req, res) => {
-  console.log(`📥 PUT /profil reçu pour l'utilisateur ${req.user.id}`);
+  console.log(`PUT /profil reçu pour l'utilisateur ${req.user.id}`);
   const userId = req.user.id;
   const { nom, prenom, photo_url, bio, adresse, ville, code_postal, pays } = req.body;
 
@@ -96,13 +96,13 @@ router.put('/profil', authenticateToken, async (req, res) => {
       }
     }
 
-    console.log(`✅ Profil de l'utilisateur ${userId} mis à jour`);
+    console.log(` Profil de l'utilisateur ${userId} mis à jour`);
     res.json({ message: 'Profil mis à jour' });
   } catch (err) {
-    console.error(`❌ Erreur PUT /profil pour ${userId}:`, err);
+    console.error(` Erreur PUT /profil pour ${userId}:`, err);
     res.status(500).json({ message: err.message });
   }
 });
 
-console.log('🟢 Routeur profil.js exporté avec succès');
+console.log(' Routeur profil.js exporté avec succès');
 module.exports = router;

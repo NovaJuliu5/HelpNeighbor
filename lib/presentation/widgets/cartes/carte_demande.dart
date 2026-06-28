@@ -63,71 +63,152 @@ class CarteDemande extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final isOwner = authState.utilisateur?.id == demande.utilisateurId;
+    final primaryColor = Theme.of(context).primaryColor;
     final adresse = (demande.adresse?.isNotEmpty == true) ? demande.adresse! : 'Adresse non renseignée';
+    final estOuverte = demande.statut == 'ouverte';
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
-        leading: GestureDetector(
-          onTap: () => _voirProfil(context),
-          behavior: HitTestBehavior.opaque,
-          child: CircleAvatar(
-            backgroundImage: (demande.photoUrl != null && demande.photoUrl!.isNotEmpty)
-                ? NetworkImage(demande.photoUrl!)
-                : null,
-            child: (demande.photoUrl == null || demande.photoUrl!.isEmpty)
-                ? Text(demande.utilisateurNom[0])
-                : null,
-          ),
-        ),
-        title: Text(demande.titre),
-        subtitle: Column(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(demande.utilisateurNom),
-            Text(demande.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Text('Prix : ${demande.prix} Ar', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
+            // Ligne principale : avatar + titre + icônes d'action
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Spacer(),
+                // Avatar cliquable pour voir le profil
+                GestureDetector(
+                  onTap: () => _voirProfil(context),
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundImage: (demande.photoUrl != null && demande.photoUrl!.isNotEmpty)
+                        ? NetworkImage(demande.photoUrl!)
+                        : null,
+                    child: (demande.photoUrl == null || demande.photoUrl!.isEmpty)
+                        ? Text(demande.utilisateurNom.isNotEmpty ? demande.utilisateurNom[0] : '?',
+                        style: const TextStyle(fontSize: 20))
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Informations de la demande
                 Expanded(
-                  child: Text(
-                    adresse,
-                    style: const TextStyle(fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    textAlign: TextAlign.right,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        demande.titre,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'par ${demande.utilisateurNom}',
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      // Statut de la demande (avec indicateur coloré)
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: estOuverte ? Colors.green.shade100 : Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              demande.statut,
+                              style: TextStyle(
+                                color: estOuverte ? Colors.green.shade800 : Colors.red.shade800,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              adresse,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Boutons d'action (signaler, changer statut)
+                Column(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.flag_outlined, size: 22),
+                      color: Colors.grey.shade600,
+                      onPressed: () => _signaler(context, ref),
+                      tooltip: 'Signaler',
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                    if (isOwner)
+                      IconButton(
+                        icon: Icon(
+                          estOuverte ? Icons.lock_open : Icons.lock,
+                          size: 22,
+                        ),
+                        color: estOuverte ? Colors.green : Colors.red,
+                        onPressed: () => _changerStatut(context, ref),
+                        tooltip: estOuverte ? 'Fermer la demande' : 'Ouvrir la demande',
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        padding: EdgeInsets.zero,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Description (2 lignes max)
+            Text(
+              demande.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.grey.shade800, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            // Ligne des détails : prix
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.attach_money, size: 16, color: primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${demande.prix} Ar',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ],
+                ),
+                // Bouton "Voir détail" (discret)
+                TextButton.icon(
+                  onPressed: () => context.push('/demande/${demande.id}'),
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                  label: const Text('Voir'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
               ],
             ),
           ],
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.flag_outlined, size: 20),
-              onPressed: () => _signaler(context, ref),
-              tooltip: 'Signaler',
-            ),
-            if (isOwner)
-              OutlinedButton(
-                onPressed: () => _changerStatut(context, ref),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: demande.statut == 'ouverte' ? Colors.red : Colors.green,
-                  side: BorderSide(color: demande.statut == 'ouverte' ? Colors.red : Colors.green),
-                ),
-                child: Text(demande.statut == 'ouverte' ? 'Fermer' : 'Ouvrir'),
-              ),
-          ],
-        ),
-        onTap: () {
-          print('🔍 Navigation vers demande ID : ${demande.id}');
-          context.push('/demande/${demande.id}');
-        },
       ),
     );
   }

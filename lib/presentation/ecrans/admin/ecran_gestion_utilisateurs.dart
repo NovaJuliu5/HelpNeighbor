@@ -29,7 +29,7 @@ class _EcranGestionUtilisateursState extends ConsumerState<EcranGestionUtilisate
   Future<void> _verifierRole() async {
     final authState = ref.read(authProvider);
     final role = authState.utilisateur?.role;
-    print('🔍 [GESTION] Rôle de l\'utilisateur connecté : $role');
+    print('[GESTION] Rôle de l\'utilisateur connecté : $role');
 
     if (role == 'admin') {
       setState(() {
@@ -44,7 +44,7 @@ class _EcranGestionUtilisateursState extends ConsumerState<EcranGestionUtilisate
       });
       await _chargerUtilisateurs();
     } else {
-      print('🚫 [GESTION] Accès refusé, redirection vers accueil');
+      print('[GESTION] Accès refusé, redirection vers accueil');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Accès non autorisé. Vous devez être administrateur ou modérateur.')),

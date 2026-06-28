@@ -36,18 +36,18 @@ void main() async {
         onTimeout: () => throw TimeoutException('No initial link'),
       );
       initialLink = uri.toString();
-      print('✅ Lien initial capturé : $initialLink');
+      print('Lien initial capturé : $initialLink');
     } catch (e) {
-      print('⏰ Pas de lien initial (timeout) : $e');
+      print('Pas de lien initial (timeout) : $e');
     } finally {
       subscription.cancel();
     }
   } catch (e) {
-    print('⏰ Pas de lien initial (erreur) : $e');
+    print('Pas de lien initial (erreur) : $e');
     initialLink = null;
   }
 
-  print('🔗 initialLink final = $initialLink');
+  print('initialLink final = $initialLink');
 
   runApp(ProviderScope(child: MyApp(initialLink: initialLink)));
 }

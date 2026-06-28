@@ -36,5 +36,5 @@ const PORT = process.env.PORT || 3000;
 
 // Écouter sur toutes les interfaces pour être accessible depuis l'émulateur
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Backend démarré sur http://localhost:${PORT} (accessible via 10.0.2.2 depuis l'émulateur)`);
+  console.log(` Backend démarré sur http://localhost:${PORT} (accessible via 10.0.2.2 depuis l'émulateur)`);
 });
